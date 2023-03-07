@@ -10,6 +10,12 @@
   "repository": "git@github.com:book000/node-utils.git",
   "author": "Tomachi <tomachi@tomacheese.com>",
   "license": "MIT",
+  "dependencies": {
+    "winston": "3.8.2",
+    "winston-daily-rotate-file": "4.7.1",
+    "logform": "2.5.1",
+    "cycle": "1.0.3"
+  },
   "devDependencies": {
     "@types/node": "18.14.6",
     "@typescript-eslint/eslint-plugin": "5.54.1",
