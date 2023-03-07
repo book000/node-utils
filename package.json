@@ -40,7 +40,7 @@
     "start": "ts-node -r tsconfig-paths/register ./src/main.ts",
     "dev": "ts-node-dev --poll -r tsconfig-paths/register ./src/main.ts",
     "compile": "tsc -p .",
-    "generate": "ctix single -w --noBackup -o src",
+    "generate": "ctix single -w --noBackup -o src -s false",
     "build": "run-s clean generate compile",
     "prepublishOnly": "run-s lint",
     "prepare": "run-s build",
