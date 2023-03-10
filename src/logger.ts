@@ -3,6 +3,9 @@ import WinstonDailyRotateFile from 'winston-daily-rotate-file'
 import { Format } from 'logform'
 import cycle from 'cycle'
 
+/**
+ * ロガーラッパークラス
+ */
 export class Logger {
   private readonly logger: winston.Logger
 
@@ -10,28 +13,60 @@ export class Logger {
     this.logger = logger
   }
 
+  /**
+   * デバッグログを出力する
+   *
+   * @param message メッセージ
+   * @param metadata メタデータ
+   */
   public debug(message: string, metadata?: Record<string, unknown>): void {
     this.logger.debug(message, metadata || {})
   }
 
+  /**
+   * 情報ログを出力する
+   *
+   * @param message メッセージ
+   * @param metadata メタデータ
+   */
   public info(message: string, metadata?: Record<string, unknown>): void {
     this.logger.info(message, metadata || {})
   }
 
+  /**
+   * 警告ログを出力する
+   *
+   * @param message メッセージ
+   * @param error エラー
+   */
   public warn(message: string, error?: Error): void {
     this.logger.warn(message, error)
   }
 
+  /**
+   * エラーログを出力する
+   *
+   * @param message メッセージ
+   * @param error エラー
+   */
   public error(message: string, error?: Error): void {
     this.logger.error(message, error)
   }
 
+  /**
+   * ロガーを初期化・設定する
+   *
+   * 環境変数で以下の設定が可能
+   * - LOG_LEVEL: ログレベル (デフォルト info)
+   * - LOG_FILE_LEVEL: ファイル出力のログレベル (デフォルト info)
+   * - LOG_DIR: ログ出力先 (デフォルト logs)
+   * - LOG_FILE_MAX_AGE: ログファイルの最大保存期間 (デフォルト 30d)
+   * - LOG_FILE_FORMAT: ログファイルのフォーマット (デフォルト text)
+   *
+   * @param category カテゴリ
+   * @returns ロガー
+   */
   public static configure(category: string): Logger {
-    // env.LOG_LEVEL でログレベルを指定できる (デフォルト info)
-    // env.LOG_FILE_LEVEL でファイル出力のログレベルを指定できる (デフォルト info)
-    // env.LOG_DIR でログ出力先を指定できる (デフォルト logs)
-    // env.LOG_FILE_MAX_AGE でログファイルの最大保存期間を指定できる (デフォルト 30d)
-    // env.LOG_FILE_FORMAT でログファイルのフォーマットを指定できる (デフォルト text)
     const logLevel = process.env.LOG_LEVEL || 'info'
     const logFileLevel = process.env.LOG_FILE_LEVEL || 'info'
     const logDirectory = process.env.LOG_DIR || 'logs'

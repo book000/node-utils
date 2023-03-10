@@ -11,10 +11,11 @@
   "author": "Tomachi <tomachi@tomacheese.com>",
   "license": "MIT",
   "dependencies": {
-    "winston": "3.8.2",
-    "winston-daily-rotate-file": "4.7.1",
+    "cycle": "1.0.3",
+    "jsonc-parser": "3.2.0",
     "logform": "2.5.1",
-    "cycle": "1.0.3"
+    "winston": "3.8.2",
+    "winston-daily-rotate-file": "4.7.1"
   },
   "devDependencies": {
     "@types/node": "18.15.0",
@@ -47,6 +48,7 @@
     "prepublishOnly": "run-s lint",
     "prepare": "run-s build",
     "clean": "rimraf dist output",
+    "example": "ts-node -r tsconfig-paths/register ./src/examples/main.ts",
     "lint": "run-p -c lint:prettier lint:eslint lint:tsc",
     "lint:prettier": "prettier --check src",
     "lint:eslint": "eslint . --ext ts,tsx",
