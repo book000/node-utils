@@ -1,4 +1,4 @@
-import { Logger } from '@/logger'
+import { Logger } from '..'
 
 export function exampleLogger() {
   const logger = Logger.configure('exampleLogger')

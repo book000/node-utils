@@ -1,6 +1,7 @@
 import { Logger } from '@/logger'
 import { Configuration, exampleConfiguration } from './example-configuration'
 import { exampleLogger } from './example-logger'
+import { exampleDiscord } from './example-discord'
 import fs from 'node:fs'
 import os from 'node:os'
 
@@ -27,6 +28,11 @@ async function main() {
 
   logger.info('Remove dummy configuration file')
   fs.unlinkSync(temporaryConfigPath)
+
+  logger.info('Calling exampleDiscord()')
+  await exampleDiscord()
 }
 
-main()
+;(async () => {
+  await main()
+})()
