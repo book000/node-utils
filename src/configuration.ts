@@ -78,7 +78,11 @@ export abstract class ConfigFramework<IConfig> {
     this.validateFailures = []
     const validates = this.validates()
     for (const key in validates) {
-      if (!validates[key](this.config)) {
+      try {
+        if (!validates[key](this.config)) {
+          this.validateFailures.push(key)
+        }
+      } catch {
         this.validateFailures.push(key)
       }
     }

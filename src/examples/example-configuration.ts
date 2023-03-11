@@ -8,6 +8,7 @@ export interface Configuration {
 class ExampleConfiguration extends ConfigFramework<Configuration> {
   protected validates(): { [key: string]: (config: Configuration) => boolean } {
     return {
+      // ...Discord.validations, // When using a message transmission to Discord
       'foo is required': (config) => config.foo !== undefined,
       'foo is string': (config) => typeof config.foo === 'string',
       'foo is 3 or more characters': (config) => config.foo.length >= 3,
