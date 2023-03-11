@@ -112,4 +112,4 @@ main()
 
 ## 📑 License
 
-This project is licensed under the [MIT License](https://github.com/book000/node-utils/blob/master/LICENSE).
+This project is licensed under the [MIT License](LICENSE).
