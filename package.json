@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist/"
+    "dist/",
+    "!dist/examples/"
   ],
   "repository": "git@github.com:book000/node-utils.git",
   "author": "Tomachi <tomachi@tomacheese.com>",
