@@ -34,6 +34,9 @@ jobs:
       - name: 👨🏻‍💻 Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: 🗑️ Remove examples directory
+        run: rm -rfv src/examples
+
       - name: 🏃 Build
         run: yarn build
 
