@@ -5,8 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist/",
-    "!**/examples/"
+    "dist"
   ],
   "repository": "git@github.com:book000/node-utils.git",
   "author": "Tomachi <tomachi@tomacheese.com>",
@@ -45,7 +44,7 @@
   "scripts": {
     "start": "ts-node -r tsconfig-paths/register ./src/main.ts",
     "dev": "ts-node-dev --poll -r tsconfig-paths/register ./src/main.ts",
-    "compile": "tsc -p .",
+    "compile": "tsc -p tsconfig.build.json",
     "ctix": "ctix single -w --noBackup -o src -s false",
     "build": "run-s clean ctix compile",
     "prepublishOnly": "run-s lint",
