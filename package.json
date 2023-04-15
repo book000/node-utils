@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist/",
-    "!dist/examples/"
+    "!**/examples/"
   ],
   "repository": "git@github.com:book000/node-utils.git",
   "author": "Tomachi <tomachi@tomacheese.com>",
