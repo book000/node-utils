@@ -6,7 +6,7 @@
     "moduleResolution": "Node",
     "lib": ["ESNext", "esnext.AsyncIterable"],
     "outDir": "./dist",
-    "removeComments": true,
+    "removeComments": false,
     "esModuleInterop": true,
     "allowJs": true,
     "checkJs": true,
