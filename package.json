@@ -22,7 +22,7 @@
   "devDependencies": {
     "@types/node": "18.17.5",
     "@typescript-eslint/eslint-plugin": "6.4.0",
-    "@typescript-eslint/parser": "6.3.0",
+    "@typescript-eslint/parser": "6.4.0",
     "ctix": "1.8.2",
     "cycle": "1.0.3",
     "eslint": "8.47.0",
