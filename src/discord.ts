@@ -163,7 +163,7 @@ export class Discord {
     }
 
     const response = await axios.post(
-      `https://discord.com/api/channels/${this.options}/messages`,
+      `https://discord.com/api/channels/${this.options.channelId}/messages`,
       formData,
       {
         headers: {
@@ -174,7 +174,9 @@ export class Discord {
       }
     )
     if (response.status !== 200) {
-      throw new Error(`Discord API returned ${response.status}`)
+      throw new Error(
+        `Discord API returned ${response.status}: ${response.data}`
+      )
     }
   }
 
@@ -190,7 +192,9 @@ export class Discord {
       validateStatus: () => true,
     })
     if (response.status !== 200 && response.status !== 204) {
-      throw new Error(`Discord API returned ${response.status}`)
+      throw new Error(
+        `Discord API returned ${response.status}: ${response.data}`
+      )
     }
   }
 
