@@ -24,5 +24,18 @@ export async function exampleDiscord() {
         color: 0x00_ff_00,
       },
     ],
+    components: [
+      {
+        type: 1,
+        components: [
+          {
+            type: 2,
+            style: 5,
+            label: 'Click me!',
+            url: 'https://google.com',
+          },
+        ],
+      },
+    ],
   })
 }

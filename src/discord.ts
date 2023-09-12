@@ -91,10 +91,42 @@ interface DiscordFileMessage {
   file: DiscordFile
 }
 
+const DiscordButtonStyles = {
+  Primary: 1,
+  Secondary: 2,
+  Success: 3,
+  Danger: 4,
+  Link: 5,
+} as const
+
+// only link button is supported
+interface DiscordButton {
+  type: 2
+  style: typeof DiscordButtonStyles.Link
+  label?: string
+  emoji?: {
+    id?: string
+    name?: string
+    animated?: boolean
+  }
+  url: string
+  disabled?: boolean
+}
+
+interface DiscordComponent {
+  type: 1
+  components: DiscordButton[]
+}
+
+interface DiscordComponentMessage {
+  components: DiscordComponent[]
+}
+
 export type DiscordMessage =
   | DiscordNormalMessage
   | DiscordEmbedMessage
   | DiscordFileMessage
+  | DiscordComponentMessage
 
 export class Discord {
   private options: DiscordOptions
