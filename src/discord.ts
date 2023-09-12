@@ -171,6 +171,7 @@ export class Discord {
         JSON.stringify({
           content: 'content' in message ? message.content : undefined,
           embeds: 'embeds' in message ? message.embeds : undefined,
+          components: 'components' in message ? message.components : undefined,
         })
       )
 
