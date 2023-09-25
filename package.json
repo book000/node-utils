@@ -21,8 +21,8 @@
   },
   "devDependencies": {
     "@types/node": "18.17.19",
-    "@typescript-eslint/eslint-plugin": "6.7.2",
-    "@typescript-eslint/parser": "6.7.2",
+    "@typescript-eslint/eslint-plugin": "6.7.3",
+    "@typescript-eslint/parser": "6.7.3",
     "ctix": "1.8.2",
     "cycle": "1.0.3",
     "eslint": "8.50.0",
