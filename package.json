@@ -20,7 +20,7 @@
     "winston-daily-rotate-file": "4.7.1"
   },
   "devDependencies": {
-    "@types/node": "18.18.1",
+    "@types/node": "18.18.3",
     "@typescript-eslint/eslint-plugin": "6.7.4",
     "@typescript-eslint/parser": "6.7.4",
     "ctix": "1.8.2",
