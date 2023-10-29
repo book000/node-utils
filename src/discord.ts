@@ -122,11 +122,21 @@ interface DiscordComponentMessage {
   components: DiscordComponent[]
 }
 
+export const DiscordMessageFlag = {
+  SuppressEmbeds: 1 << 2,
+  SuppressNotifications: 1 << 12,
+} as const
+
+interface DiscordMessageFlags {
+  flags: number
+}
+
 export type DiscordMessage =
   | DiscordNormalMessage
   | DiscordEmbedMessage
   | DiscordFileMessage
   | DiscordComponentMessage
+  | DiscordMessageFlags
 
 export class Discord {
   private options: DiscordOptions
