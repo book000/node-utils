@@ -1,4 +1,4 @@
-import { Discord, Logger } from '..'
+import { Discord, DiscordMessageFlag, Logger } from '..'
 
 export async function exampleDiscord() {
   const logger = Logger.configure('exampleDiscord')
@@ -37,5 +37,8 @@ export async function exampleDiscord() {
         ],
       },
     ],
+    flags:
+      DiscordMessageFlag.SuppressEmbeds |
+      DiscordMessageFlag.SuppressNotifications,
   })
 }
