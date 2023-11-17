@@ -59,7 +59,7 @@ export class Logger {
    * 環境変数で以下の設定が可能
    * - LOG_LEVEL: ログレベル (デフォルト info)
    * - LOG_FILE_LEVEL: ファイル出力のログレベル (デフォルト info)
-   * - LOG_DIR: ログ出力先 (デフォルト logs)
+   * - LOG_DIR: ログ出力先 (デフォルト logs)。Vercelで動作する場合は /tmp/logs に出力する
    * - LOG_FILE_MAX_AGE: ログファイルの最大保存期間 (デフォルト 30d)
    * - LOG_FILE_FORMAT: ログファイルのフォーマット (デフォルト text)
    *
@@ -69,7 +69,9 @@ export class Logger {
   public static configure(category: string): Logger {
     const logLevel = process.env.LOG_LEVEL || 'info'
     const logFileLevel = process.env.LOG_FILE_LEVEL || 'info'
-    const logDirectory = process.env.LOG_DIR || 'logs'
+    const logDirectory = process.env.VERCEL
+      ? '/tmp/logs'
+      : process.env.LOG_DIR || 'logs'
     const logFileMaxAge = process.env.LOG_FILE_MAX_AGE || '30d'
     const selectLogFileFormat = process.env.LOG_FILE_FORMAT || 'text'
 
