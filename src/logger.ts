@@ -2,6 +2,7 @@ import winston, { format } from 'winston'
 import WinstonDailyRotateFile from 'winston-daily-rotate-file'
 import { Format } from 'logform'
 import cycle from 'cycle'
+import dateFnsTz from 'date-fns-tz'
 
 /**
  * ロガーラッパークラス
@@ -119,7 +120,7 @@ export class Logger {
           : format.uncolorize(),
         decycleFormat(),
         format.timestamp({
-          format: 'YYYY-MM-DD hh:mm:ss.SSS',
+          format: this.getTimestamp(),
         }),
         logFileFormat,
       ].filter((f) => f !== undefined) as Format[])
@@ -131,7 +132,7 @@ export class Logger {
         }),
         decycleFormat(),
         format.timestamp({
-          format: 'YYYY-MM-DD hh:mm:ss.SSS',
+          format: this.getTimestamp(),
         }),
         textFormat,
       ].filter((f) => f !== undefined) as Format[])
@@ -157,6 +158,19 @@ export class Logger {
       ],
     })
     return new Logger(logger)
+  }
+
+  static getTimestamp(): () => string {
+    // 'YYYY-MM-DD hh:mm:ss.SSS'
+    // Asia/Tokyo
+
+    const timezone = process.env.TZ || 'Asia/Tokyo'
+    const format = 'yyyy-MM-dd HH:mm:ss.SSS'
+
+    return () => {
+      const zonedTime = dateFnsTz.utcToZonedTime(new Date(), timezone)
+      return dateFnsTz.format(zonedTime, format, { timeZone: timezone })
+    }
   }
 }
 
