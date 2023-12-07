@@ -164,10 +164,9 @@ export class Logger {
     // 'YYYY-MM-DD hh:mm:ss.SSS'
     // Asia/Tokyo
 
-    const timezone = process.env.TZ || 'Asia/Tokyo'
-    const format = 'yyyy-MM-dd HH:mm:ss.SSS'
-
     return () => {
+      const timezone = process.env.TZ || 'Asia/Tokyo'
+      const format = 'yyyy-MM-dd HH:mm:ss.SSS'
       const zonedTime = dateFnsTz.utcToZonedTime(new Date(), timezone)
       return dateFnsTz.format(zonedTime, format, { timeZone: timezone })
     }
