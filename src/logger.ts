@@ -2,7 +2,7 @@ import winston, { format } from 'winston'
 import WinstonDailyRotateFile from 'winston-daily-rotate-file'
 import { Format } from 'logform'
 import cycle from 'cycle'
-import dateFnsTz from 'date-fns-tz'
+import moment from 'moment-timezone'
 
 /**
  * ロガーラッパークラス
@@ -165,10 +165,13 @@ export class Logger {
     // Asia/Tokyo
 
     return () => {
-      const timezone = process.env.TZ || 'Asia/Tokyo'
-      const format = 'yyyy-MM-dd HH:mm:ss.SSS'
-      const zonedTime = dateFnsTz.utcToZonedTime(new Date(), timezone)
-      return dateFnsTz.format(zonedTime, format, { timeZone: timezone })
+      const timezone =
+        process.env.TZ && moment.tz.zone(process.env.TZ)
+          ? process.env.TZ
+          : 'Asia/Tokyo'
+      const format = 'YYYY-MM-DD HH:mm:ss.SSS'
+      const zonedTime = moment().tz(timezone)
+      return zonedTime.format(format)
     }
   }
 }
