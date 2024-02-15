@@ -218,7 +218,7 @@ export class Discord {
     )
     if (response.status !== 200) {
       throw new Error(
-        `Discord API returned ${response.status}: ${response.data}`
+        `Discord API returned ${response.status}: ${JSON.stringify(response.data)}`
       )
     }
 
@@ -241,7 +241,7 @@ export class Discord {
     })
     if (response.status !== 200 && response.status !== 204) {
       throw new Error(
-        `Discord API returned ${response.status}: ${response.data}`
+        `Discord API returned ${response.status}: ${JSON.stringify(response.data)}`
       )
     }
 
@@ -299,7 +299,7 @@ export class Discord {
     )
     if (response.status !== 200) {
       throw new Error(
-        `Discord API returned ${response.status}: ${response.data}`
+        `Discord API returned ${response.status}: ${JSON.stringify(response.data)}`
       )
     }
   }
