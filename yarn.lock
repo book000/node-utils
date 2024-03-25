@@ -867,10 +867,10 @@ cross-spawn@^7.0.0, cross-spawn@^7.0.2:
     shebang-command "^2.0.0"
     which "^2.0.1"
 
-ctix@2.4.1:
-  version "2.4.1"
-  resolved "https://registry.yarnpkg.com/ctix/-/ctix-2.4.1.tgz#688216df251d22fa636db5b6805166c9d43261a8"
-  integrity sha512-L6XHxdJBtRC0K19OwVvo+NCnL/SBqpgi81cSHbG5pDSNDgdI0/nyVY20TCeCTPhum4J4JGTA5Ns9jTGjjU0q/A==
+ctix@2.4.2:
+  version "2.4.2"
+  resolved "https://registry.yarnpkg.com/ctix/-/ctix-2.4.2.tgz#1ec507f659c6f18d2a98ef8dd5584e73ebbcfeae"
+  integrity sha512-BVdxq/cv72Mzg8Z/DuUNsBPCWG4ZbOjZNbHvlnpehRpG7EvQmInFHjOy5bMEj2kUYwfcLQ6hTWk3q+vWK53oOw==
   dependencies:
     chalk "^4.1.2"
     change-case "^4.1.2"
