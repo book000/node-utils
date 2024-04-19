@@ -48,9 +48,7 @@ export abstract class ConfigFramework<IConfig> {
    *
    * @returns 検証ルール
    */
-  protected abstract validates(): {
-    [key: string]: (config: IConfig) => boolean
-  }
+  protected abstract validates(): Record<string, (config: IConfig) => boolean>
 
   /**
    * 設定ファイルを読み込む
