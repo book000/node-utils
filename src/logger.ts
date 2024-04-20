@@ -1,6 +1,5 @@
 import winston, { format } from 'winston'
 import WinstonDailyRotateFile from 'winston-daily-rotate-file'
-import { Format } from 'logform'
 import cycle from 'cycle'
 import moment from 'moment-timezone'
 
@@ -21,7 +20,7 @@ export class Logger {
    * @param metadata メタデータ
    */
   public debug(message: string, metadata?: Record<string, unknown>): void {
-    this.logger.debug(message, metadata || {})
+    this.logger.debug(message, metadata ?? {})
   }
 
   /**
@@ -31,7 +30,7 @@ export class Logger {
    * @param metadata メタデータ
    */
   public info(message: string, metadata?: Record<string, unknown>): void {
-    this.logger.info(message, metadata || {})
+    this.logger.info(message, metadata ?? {})
   }
 
   /**
@@ -68,13 +67,13 @@ export class Logger {
    * @returns ロガー
    */
   public static configure(category: string): Logger {
-    const logLevel = process.env.LOG_LEVEL || 'info'
-    const logFileLevel = process.env.LOG_FILE_LEVEL || 'info'
+    const logLevel = process.env.LOG_LEVEL ?? 'info'
+    const logFileLevel = process.env.LOG_FILE_LEVEL ?? 'info'
     const logDirectory = process.env.VERCEL
       ? '/tmp/logs'
-      : process.env.LOG_DIR || 'logs'
-    const logFileMaxAge = process.env.LOG_FILE_MAX_AGE || '30d'
-    const selectLogFileFormat = process.env.LOG_FILE_FORMAT || 'text'
+      : process.env.LOG_DIR ?? 'logs'
+    const logFileMaxAge = process.env.LOG_FILE_MAX_AGE ?? '30d'
+    const selectLogFileFormat = process.env.LOG_FILE_FORMAT ?? 'text'
 
     const textFormat = format.printf((info) => {
       const { timestamp, level, message, ...rest } = info
@@ -92,7 +91,7 @@ export class Logger {
         '[',
         timestamp,
         '] [',
-        category ?? '',
+        category,
         category ? '/' : '',
         level.toLocaleUpperCase(),
         ']: ',
@@ -102,40 +101,38 @@ export class Logger {
           : '',
       ].join('')
       const errorLine = info.stack
-        ? info.stack.split('\n').slice(1).join('\n')
+        ? // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+          info.stack.split('\n').slice(1).join('\n')
         : undefined
 
       return [standardLine, errorLine].filter((l) => l !== undefined).join('\n')
     })
     const logFileFormat =
       selectLogFileFormat === 'ndjson' ? format.json() : textFormat
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     const decycleFormat = format((info) => cycle.decycle(info))
     const fileFormat = format.combine(
-      ...([
-        format.errors({ stack: true }),
-        selectLogFileFormat === 'ndjson'
-          ? format.colorize({
-              message: true,
-            })
-          : format.uncolorize(),
-        decycleFormat(),
-        format.timestamp({
-          format: this.getTimestamp(),
-        }),
-        logFileFormat,
-      ].filter((f) => f !== undefined) as Format[])
+      format.errors({ stack: true }),
+      selectLogFileFormat === 'ndjson'
+        ? format.colorize({
+            message: true,
+          })
+        : format.uncolorize(),
+      decycleFormat(),
+      format.timestamp({
+        format: this.getTimestamp(),
+      }),
+      logFileFormat
     )
     const consoleFormat = format.combine(
-      ...([
-        format.colorize({
-          message: true,
-        }),
-        decycleFormat(),
-        format.timestamp({
-          format: this.getTimestamp(),
-        }),
-        textFormat,
-      ].filter((f) => f !== undefined) as Format[])
+      format.colorize({
+        message: true,
+      }),
+      decycleFormat(),
+      format.timestamp({
+        format: this.getTimestamp(),
+      }),
+      textFormat
     )
     const extension = selectLogFileFormat === 'ndjson' ? 'ndjson' : 'log'
     const transportRotateFile = new WinstonDailyRotateFile({

@@ -155,18 +155,20 @@ export class Discord {
     }
   }
 
-  public static get validations(): {
-    [key: string]: (options: any) => boolean
-  } {
+  public static get validations(): Record<string, (options: any) => boolean> {
     return {
       'token or webhookUrl and channelId': (options: any) =>
         'token' in options ||
         ('webhookUrl' in options && 'channelId' in options),
-      'token is valid': (options: any) => typeof options.token === 'string',
+      'token is valid': (options: any) =>
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        'token' in options && typeof options.token === 'string',
       'webhookUrl is valid': (options: any) =>
-        typeof options.webhookUrl === 'string',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        'webhookUrl' in options && typeof options.webhookUrl === 'string',
       'channelId is valid': (options: any) =>
-        typeof options.channelId === 'string',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        'channelId' in options && typeof options.channelId === 'string',
     }
   }
 
@@ -205,7 +207,9 @@ export class Discord {
       throw new Error('Invalid bot options')
     }
 
-    const response = await axios.post(
+    const response = await axios.post<{
+      id: string
+    }>(
       `https://discord.com/api/channels/${this.options.channelId}/messages`,
       formData,
       {
@@ -233,7 +237,9 @@ export class Discord {
     const urlObject = new URL(this.options.webhookUrl)
     urlObject.searchParams.append('wait', 'true')
 
-    const response = await axios.post(urlObject.toString(), formData, {
+    const response = await axios.post<{
+      id: string
+    }>(urlObject.toString(), formData, {
       headers: {
         ...formData.getHeaders(),
       },
