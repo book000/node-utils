@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@book000/eslint-config": "1.6.4",
-    "@types/node": "20.12.7",
+    "@types/node": "20.12.8",
     "ctix": "2.4.4",
     "cycle": "1.0.3",
     "eslint": "9.1.1",
