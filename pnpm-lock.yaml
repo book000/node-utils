@@ -54,9 +54,6 @@ importers:
       eslint-plugin-promise:
         specifier: 6.5.1
         version: 6.5.1(eslint@9.7.0)
-      eslint-plugin-unicorn:
-        specifier: 54.0.0
-        version: 54.0.0(eslint@9.7.0)
       prettier:
         specifier: 3.3.3
         version: 3.3.3
