@@ -2,6 +2,10 @@
   "name": "@book000/node-utils",
   "version": "1.0.0",
   "description": "Self-Utility library",
+  "homepage": "https://github.com/book000/node-utils",
+  "bugs": {
+    "url": "https://github.com/book000/node-utils/issues"
+  },
   "license": "MIT",
   "author": "Tomachi <tomachi@tomacheese.com>",
   "files": [
@@ -9,7 +13,10 @@
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "repository": "git@github.com:book000/node-utils.git",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:book000/node-utils.git"
+  },
   "scripts": {
     "start": "tsx ./src/main.ts",
     "dev": "tsx watch ./src/main.ts",
@@ -20,13 +27,14 @@
     "prepare": "run-s build",
     "clean": "rimraf dist output",
     "example": "tsx ./src/examples/main.ts",
-    "lint": "run-p -c lint:prettier lint:eslint lint:tsc",
     "lint:prettier": "prettier --check src",
-    "lint:eslint": "eslint . -c eslint.config.mjs",
     "lint:tsc": "tsc",
-    "fix": "run-s fix:prettier fix:eslint",
-    "fix:eslint": "eslint . -c eslint.config.mjs --fix",
-    "fix:prettier": "prettier --write src"
+    "fix:prettier": "prettier --write src",
+    "preinstall": "npx only-allow pnpm",
+    "lint": "run-z lint:prettier,lint:eslint,lint:tsc",
+    "lint:eslint": "eslint . -c eslint.config.mjs",
+    "fix": "run-z fix:prettier,fix:eslint",
+    "fix:eslint": "eslint . -c eslint.config.mjs --fix"
   },
   "dependencies": {
     "axios": "1.7.2",
@@ -47,12 +55,15 @@
     "eslint-plugin-import": "2.29.1",
     "eslint-plugin-n": "17.9.0",
     "eslint-plugin-promise": "6.5.1",
+    "eslint-plugin-unicorn": "54.0.0",
     "prettier": "3.3.3",
     "rimraf": "6.0.1",
+    "run-z": "2.0.0",
     "tsx": "4.16.2",
     "typescript": "5.5.3",
     "winston": "3.13.1",
     "winston-daily-rotate-file": "5.0.0",
     "yarn-run-all": "3.1.1"
-  }
+  },
+  "packageManager": "pnpm@9.5.0"
 }
