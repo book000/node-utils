@@ -71,7 +71,7 @@ export class Logger {
     const logFileLevel = process.env.LOG_FILE_LEVEL ?? 'info'
     const logDirectory = process.env.VERCEL
       ? '/tmp/logs'
-      : process.env.LOG_DIR ?? 'logs'
+      : (process.env.LOG_DIR ?? 'logs')
     const logFileMaxAge = process.env.LOG_FILE_MAX_AGE ?? '30d'
     const selectLogFileFormat = process.env.LOG_FILE_FORMAT ?? 'text'
 
