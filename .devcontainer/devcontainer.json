@@ -1,0 +1,45 @@
+{
+  "name": "@book000/node-utils",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:0-18",
+  "otherPortsAttributes": {
+    "onAutoForward": "silent"
+  },
+  "postCreateCommand": "pnpm install",
+  "waitFor": "postCreateCommand",
+  "customizations": {
+    "extensions": [
+      "esbenp.prettier-vscode"
+    ],
+    "settings": {
+      "git.branchProtection": [
+        "main",
+        "master"
+      ],
+      "editor.formatOnSave": true,
+      "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": false
+        }
+      }
+    },
+    "vscode": {
+      "extensions": [
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "git.branchProtection": [
+          "main",
+          "master"
+        ],
+        "editor.formatOnSave": true,
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "never"
+          }
+        }
+      }
+    }
+  }
+}
