@@ -30,7 +30,6 @@
     "lint:prettier": "prettier --check src",
     "lint:tsc": "tsc",
     "fix:prettier": "prettier --write src",
-    "preinstall": "npx only-allow pnpm",
     "lint": "run-z lint:prettier,lint:eslint,lint:tsc",
     "lint:eslint": "eslint . -c eslint.config.mjs",
     "fix": "run-z fix:prettier,fix:eslint",
