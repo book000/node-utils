@@ -63,5 +63,5 @@
     "winston-daily-rotate-file": "5.0.0",
     "yarn-run-all": "3.1.1"
   },
-  "packageManager": "pnpm@9.7.1"
+  "packageManager": "pnpm@9.8.0"
 }
