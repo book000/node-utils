@@ -91,6 +91,7 @@ interface DiscordFileMessage {
   file: DiscordFile
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DiscordButtonStyles = {
   Primary: 1,
   Secondary: 2,
