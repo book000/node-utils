@@ -644,8 +644,8 @@ packages:
     resolution: {integrity: sha512-buhp5kePrmda3vhc5B9t7pUQXAb2Tnd0qgpkIhPhkHXxJpiPJ11H0ZEU0oBpJ2QztSbzG/ZxMj/CHsYJqRHmyg==}
     engines: {node: '>= 12.0.0'}
 
-  complex.js@2.2.1:
-    resolution: {integrity: sha512-D+EeuMW8pCz+Lt1YbUSfpZsT/Stt6slSqsRG7dTqLB/g4t3I+qse2lxsa00BUta7Jgo24Bw90QaVpv1eziuzHA==}
+  complex.js@2.2.3:
+    resolution: {integrity: sha512-XnOksGXxhQTvL3LjUgwiOPqL7vF7uikCQE/jpuylNpXmG2LZ+l0z1t6qIlJ2TJVDteXPHhlYd3+mhHOGeTFfsg==}
 
   concat-map@0.0.1:
     resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
@@ -2788,7 +2788,7 @@ snapshots:
 
   comment-parser@1.4.1: {}
 
-  complex.js@2.2.1: {}
+  complex.js@2.2.3: {}
 
   concat-map@0.0.1: {}
 
@@ -3700,7 +3700,7 @@ snapshots:
   mathjs@12.4.3:
     dependencies:
       '@babel/runtime': 7.25.7
-      complex.js: 2.2.1
+      complex.js: 2.2.3
       decimal.js: 10.4.3
       escape-latex: 1.2.0
       fraction.js: 4.3.4
