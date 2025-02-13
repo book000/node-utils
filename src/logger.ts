@@ -100,10 +100,14 @@ export class Logger {
           ? ` (${JSON.stringify(filteredRest)})`
           : '',
       ].join('')
-      const errorLine = info.stack
-        ? // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-          info.stack.split('\n').slice(1).join('\n')
-        : undefined
+      let errorLine
+      if (info.stack && typeof info.stack === 'string') {
+        errorLine = info.stack.split('\n').slice(1).join('\n')
+      } else if (info.stack) {
+        errorLine = JSON.stringify(info.stack)
+      } else {
+        errorLine = undefined
+      }
 
       return [standardLine, errorLine].filter((l) => l !== undefined).join('\n')
     })
