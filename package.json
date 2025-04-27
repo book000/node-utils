@@ -36,7 +36,7 @@
     "fix:eslint": "eslint . -c eslint.config.mjs --fix"
   },
   "dependencies": {
-    "axios": "1.8.4",
+    "axios": "1.9.0",
     "cycle": "1.0.3",
     "form-data": "4.0.2",
     "jsonc-parser": "3.3.1",
