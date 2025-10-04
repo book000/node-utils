@@ -24,11 +24,11 @@ importers:
         specifier: 0.6.0
         version: 0.6.0
       winston:
-        specifier: 3.18.2
-        version: 3.18.2
+        specifier: 3.18.3
+        version: 3.18.3
       winston-daily-rotate-file:
         specifier: 5.0.0
-        version: 5.0.0(winston@3.18.2)
+        version: 5.0.0(winston@3.18.3)
     devDependencies:
       '@book000/eslint-config':
         specifier: 1.11.2
@@ -3165,8 +3165,8 @@ packages:
     resolution: {integrity: sha512-8drMJ4rkgaPo1Me4zD/3WLfI/zPdA9o2IipKODunnGDcuqbHwjsbB79ylv04LCGGzU0xQ6vTznOMpQGaLhhm6A==}
     engines: {node: '>= 12.0.0'}
 
-  winston@3.18.2:
-    resolution: {integrity: sha512-+yDkrWD2rWkv6XjSgK2QyujZDNsHE9YLa8S284TpVrYdaloMkZ7NvHzfnETYlSPOX9h5j5VJ+Ro9J872O8CC/g==}
+  winston@3.18.3:
+    resolution: {integrity: sha512-NoBZauFNNWENgsnC9YpgyYwOVrl2m58PpQ8lNHjV3kosGs7KJ7Npk9pCUE+WJlawVSe8mykWDKWFSVfs3QO9ww==}
     engines: {node: '>= 12.0.0'}
 
   word-wrap@1.2.5:
@@ -6858,12 +6858,12 @@ snapshots:
     dependencies:
       isexe: 2.0.0
 
-  winston-daily-rotate-file@5.0.0(winston@3.18.2):
+  winston-daily-rotate-file@5.0.0(winston@3.18.3):
     dependencies:
       file-stream-rotator: 0.6.1
       object-hash: 3.0.0
       triple-beam: 1.4.1
-      winston: 3.18.2
+      winston: 3.18.3
       winston-transport: 4.9.0
 
   winston-transport@4.9.0:
@@ -6872,7 +6872,7 @@ snapshots:
       readable-stream: 3.6.2
       triple-beam: 1.4.1
 
-  winston@3.18.2:
+  winston@3.18.3:
     dependencies:
       '@colors/colors': 1.6.0
       '@dabh/diagnostics': 2.0.8
