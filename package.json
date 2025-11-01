@@ -37,7 +37,7 @@
     "test": "jest --runInBand --passWithNoTests --detectOpenHandles --forceExit --coverage"
   },
   "dependencies": {
-    "axios": "1.13.0",
+    "axios": "1.13.1",
     "cycle": "1.0.3",
     "form-data": "4.0.4",
     "jsonc-parser": "3.3.1",
