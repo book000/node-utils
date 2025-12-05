@@ -1,5 +1,9 @@
 name: Release
 
+# This workflow publishes to npm using OIDC trusted publishing
+# Configured at: https://www.npmjs.com/settings/book000/packages/@book000/node-utils/access
+# No NPM_TOKEN secret is required - authentication uses OpenID Connect (OIDC)
+
 on:
   pull_request_target:
     branches:
@@ -12,8 +16,8 @@ concurrency:
   group: ${{ github.workflow }}
 
 permissions:
-  contents: write
-  id-token: write
+  contents: write  # Required for creating tags and releases
+  id-token: write  # Required for OIDC trusted publishing to npm
 
 jobs:
   release:
@@ -77,6 +81,9 @@ jobs:
           pnpm version --no-git-tag-version ${{ steps.tag-version.outputs.new_version }}
 
       - name: 📦 Publish
+        # Uses npm OIDC trusted publishing (no NPM_TOKEN required)
+        # The --provenance flag enables automatic attestation signing
+        # Requires id-token: write permission and environment: release
         run: |
           pnpm publish --access public --no-git-checks --provenance
 
