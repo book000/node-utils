@@ -11,11 +11,16 @@ on:
 concurrency:
   group: ${{ github.workflow }}
 
+permissions:
+  contents: write
+  id-token: write
+
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
+    environment: release
 
     steps:
       - name: 🛎 Checkout
@@ -73,7 +78,7 @@ jobs:
 
       - name: 📦 Publish
         run: |
-          pnpm publish --access public --no-git-checks
+          pnpm publish --access public --no-git-checks --provenance
 
       - name: 📃 Create Release
         id: create_release
