@@ -11,16 +11,11 @@ on:
 concurrency:
   group: ${{ github.workflow }}
 
-permissions:
-  contents: write
-  id-token: write
-
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
-    environment: release
 
     steps:
       - name: 🛎 Checkout
@@ -33,9 +28,6 @@ jobs:
         with:
           node-version-file: .node-version
           registry-url: 'https://registry.npmjs.org'
-
-      - name: Upgrade npm
-        run: npm install -g npm@latest
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -81,7 +73,9 @@ jobs:
 
       - name: 📦 Publish
         run: |
-          pnpm publish --access public --no-git-checks --provenance
+          pnpm publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: 📃 Create Release
         id: create_release
