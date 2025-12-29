@@ -6,6 +6,16 @@ import moment from 'moment-timezone'
 /**
  * ロガーラッパークラス
  */
+const getTimestampFormatter = (): string => {
+  const timezone =
+    process.env.TZ && moment.tz.zone(process.env.TZ)
+      ? process.env.TZ
+      : 'Asia/Tokyo'
+  const format = 'YYYY-MM-DD HH:mm:ss.SSS'
+  const zonedTime = moment().tz(timezone)
+  return zonedTime.format(format)
+}
+
 export class Logger {
   private readonly logger: winston.Logger
 
@@ -164,16 +174,7 @@ export class Logger {
   static getTimestamp(): () => string {
     // 'YYYY-MM-DD hh:mm:ss.SSS'
     // Asia/Tokyo
-
-    return () => {
-      const timezone =
-        process.env.TZ && moment.tz.zone(process.env.TZ)
-          ? process.env.TZ
-          : 'Asia/Tokyo'
-      const format = 'YYYY-MM-DD HH:mm:ss.SSS'
-      const zonedTime = moment().tz(timezone)
-      return zonedTime.format(format)
-    }
+    return getTimestampFormatter
   }
 }
 
