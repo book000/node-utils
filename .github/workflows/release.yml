@@ -1,12 +1,10 @@
 name: Release
 
 on:
-  pull_request_target:
+  push:
     branches:
       - main
       - master
-    types:
-      - closed
 
 concurrency:
   group: ${{ github.workflow }}
@@ -15,7 +13,6 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
 
     permissions:
       contents: write
