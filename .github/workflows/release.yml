@@ -17,17 +17,17 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
 
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+
     steps:
       - name: 🛎 Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           fetch-depth: 0
-
-      - name: 🏗 Setup node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .node-version
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -35,6 +35,12 @@ jobs:
         with:
           run_install: false
           package_json_file: package.json
+
+      - name: 🏗 Setup node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          registry-url: 'https://registry.npmjs.org'
 
       - name: 📂 Get pnpm store directory
         id: pnpm-cache
@@ -49,6 +55,9 @@ jobs:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
+
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: 👨🏻‍💻 Install dependencies
         run: pnpm install --frozen-lockfile --prefer-frozen-lockfile
