@@ -46,7 +46,7 @@
     "winston-daily-rotate-file": "5.0.0"
   },
   "devDependencies": {
-    "@book000/eslint-config": "1.12.32",
+    "@book000/eslint-config": "1.12.33",
     "@types/jest": "30.0.0",
     "@types/node": "25.0.3",
     "ctix": "2.7.2",
