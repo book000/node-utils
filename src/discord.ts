@@ -1,6 +1,3 @@
-import axios from 'axios'
-import FormData from 'form-data'
-
 interface DiscordBotOptions {
   token: string
   channelId: string
@@ -173,7 +170,9 @@ export class Discord {
     }
   }
 
-  public async sendMessage(message: string | DiscordMessage): Promise<string> {
+  public async sendMessage(
+    message: string | DiscordMessage
+  ): Promise<string | undefined> {
     const formData = new FormData()
 
     if (typeof message === 'string') {
@@ -189,12 +188,11 @@ export class Discord {
       )
 
       if ('file' in message) {
-        formData.append('file', message.file.file, {
-          filename: `${message.file.isSpoiler === true ? 'SPOILER_' : ''}${
-            message.file.name
-          }`,
-          contentType: message.file.contentType,
+        const filename = `${message.file.isSpoiler === true ? 'SPOILER_' : ''}${message.file.name}`
+        const blob = new Blob([message.file.file], {
+          type: message.file.contentType,
         })
+        formData.append('file', blob, filename) // WHATWG FormData (Node.js 18+)
       }
     }
 
@@ -208,29 +206,28 @@ export class Discord {
       throw new Error('Invalid bot options')
     }
 
-    const response = await axios.post<{
-      id: string
-    }>(
+    const response = await fetch(
       `https://discord.com/api/channels/${this.options.channelId}/messages`,
-      formData,
       {
+        method: 'POST',
         headers: {
-          ...formData.getHeaders(),
           Authorization: `Bot ${this.options.token}`,
         },
-        validateStatus: () => true,
+        body: formData,
       }
     )
     if (response.status !== 200) {
+      const data = await response.json()
       throw new Error(
-        `Discord API returned ${response.status}: ${JSON.stringify(response.data)}`
+        `Discord API returned ${response.status}: ${JSON.stringify(data)}`
       )
     }
 
-    return response.data.id
+    const data = (await response.json()) as { id: string }
+    return data.id
   }
 
-  private async sendWebhook(formData: FormData): Promise<string> {
+  private async sendWebhook(formData: FormData): Promise<string | undefined> {
     if (!this.isDiscordWebhookOptions(this.options)) {
       throw new Error('Invalid webhook options')
     }
@@ -238,21 +235,24 @@ export class Discord {
     const urlObject = new URL(this.options.webhookUrl)
     urlObject.searchParams.append('wait', 'true')
 
-    const response = await axios.post<{
-      id: string
-    }>(urlObject.toString(), formData, {
-      headers: {
-        ...formData.getHeaders(),
-      },
-      validateStatus: () => true,
+    const response = await fetch(urlObject.toString(), {
+      method: 'POST',
+      headers: {},
+      body: formData,
     })
     if (response.status !== 200 && response.status !== 204) {
+      const data = await response.json()
       throw new Error(
-        `Discord API returned ${response.status}: ${JSON.stringify(response.data)}`
+        `Discord API returned ${response.status}: ${JSON.stringify(data)}`
       )
     }
 
-    return response.data.id
+    if (response.status === 204) {
+      return undefined
+    }
+
+    const data = (await response.json()) as { id: string }
+    return data.id
   }
 
   public async editMessage(
@@ -274,12 +274,11 @@ export class Discord {
       )
 
       if ('file' in message) {
-        formData.append('file', message.file.file, {
-          filename: `${message.file.isSpoiler === true ? 'SPOILER_' : ''}${
-            message.file.name
-          }`,
-          contentType: message.file.contentType,
+        const filename = `${message.file.isSpoiler === true ? 'SPOILER_' : ''}${message.file.name}`
+        const blob = new Blob([message.file.file], {
+          type: message.file.contentType,
         })
+        formData.append('file', blob, filename)
       }
     }
 
@@ -293,20 +292,20 @@ export class Discord {
       throw new Error('Invalid bot options')
     }
 
-    const response = await axios.patch(
+    const response = await fetch(
       `https://discord.com/api/channels/${this.options.channelId}/messages/${messageId}`,
-      formData,
       {
+        method: 'PATCH',
         headers: {
-          ...formData.getHeaders(),
           Authorization: `Bot ${this.options.token}`,
         },
-        validateStatus: () => true,
+        body: formData,
       }
     )
     if (response.status !== 200) {
+      const data = await response.json()
       throw new Error(
-        `Discord API returned ${response.status}: ${JSON.stringify(response.data)}`
+        `Discord API returned ${response.status}: ${JSON.stringify(data)}`
       )
     }
   }
@@ -322,20 +321,17 @@ export class Discord {
     const urlObject = new URL(this.options.webhookUrl)
     urlObject.searchParams.append('wait', 'true')
 
-    const response = await axios.patch(
+    const response = await fetch(
       `${urlObject.toString()}/messages/${messageId}`,
-      formData,
       {
-        headers: {
-          ...formData.getHeaders(),
-        },
-        validateStatus: () => true,
+        method: 'PATCH',
+        headers: {},
+        body: formData,
       }
     )
     if (response.status !== 200 && response.status !== 204) {
-      throw new Error(
-        `Discord API returned ${response.status}: ${response.data}`
-      )
+      const text = await response.text()
+      throw new Error(`Discord API returned ${response.status}: ${text}`)
     }
   }
 
