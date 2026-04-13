@@ -1,5 +1,3 @@
-import FormData from 'form-data'
-
 interface DiscordBotOptions {
   token: string
   channelId: string
@@ -172,7 +170,9 @@ export class Discord {
     }
   }
 
-  public async sendMessage(message: string | DiscordMessage): Promise<string> {
+  public async sendMessage(
+    message: string | DiscordMessage
+  ): Promise<string | undefined> {
     const formData = new FormData()
 
     if (typeof message === 'string') {
@@ -188,12 +188,11 @@ export class Discord {
       )
 
       if ('file' in message) {
-        formData.append('file', message.file.file, {
-          filename: `${message.file.isSpoiler === true ? 'SPOILER_' : ''}${
-            message.file.name
-          }`,
-          contentType: message.file.contentType,
+        const filename = `${message.file.isSpoiler === true ? 'SPOILER_' : ''}${message.file.name}`
+        const blob = new Blob([message.file.file], {
+          type: message.file.contentType,
         })
+        formData.append('file', blob, filename) // WHATWG FormData (Node.js 18+)
       }
     }
 
@@ -212,10 +211,9 @@ export class Discord {
       {
         method: 'POST',
         headers: {
-          ...formData.getHeaders(),
           Authorization: `Bot ${this.options.token}`,
         },
-        body: formData.getBuffer(),
+        body: formData,
       }
     )
     if (response.status !== 200) {
@@ -229,7 +227,7 @@ export class Discord {
     return data.id
   }
 
-  private async sendWebhook(formData: FormData): Promise<string> {
+  private async sendWebhook(formData: FormData): Promise<string | undefined> {
     if (!this.isDiscordWebhookOptions(this.options)) {
       throw new Error('Invalid webhook options')
     }
@@ -239,10 +237,8 @@ export class Discord {
 
     const response = await fetch(urlObject.toString(), {
       method: 'POST',
-      headers: {
-        ...formData.getHeaders(),
-      },
-      body: formData.getBuffer(),
+      headers: {},
+      body: formData,
     })
     if (response.status !== 200 && response.status !== 204) {
       const data = await response.json()
@@ -252,7 +248,7 @@ export class Discord {
     }
 
     if (response.status === 204) {
-      return undefined as unknown as string
+      return undefined
     }
 
     const data = (await response.json()) as { id: string }
@@ -278,12 +274,11 @@ export class Discord {
       )
 
       if ('file' in message) {
-        formData.append('file', message.file.file, {
-          filename: `${message.file.isSpoiler === true ? 'SPOILER_' : ''}${
-            message.file.name
-          }`,
-          contentType: message.file.contentType,
+        const filename = `${message.file.isSpoiler === true ? 'SPOILER_' : ''}${message.file.name}`
+        const blob = new Blob([message.file.file], {
+          type: message.file.contentType,
         })
+        formData.append('file', blob, filename)
       }
     }
 
@@ -302,10 +297,9 @@ export class Discord {
       {
         method: 'PATCH',
         headers: {
-          ...formData.getHeaders(),
           Authorization: `Bot ${this.options.token}`,
         },
-        body: formData.getBuffer(),
+        body: formData,
       }
     )
     if (response.status !== 200) {
@@ -331,10 +325,8 @@ export class Discord {
       `${urlObject.toString()}/messages/${messageId}`,
       {
         method: 'PATCH',
-        headers: {
-          ...formData.getHeaders(),
-        },
-        body: formData.getBuffer(),
+        headers: {},
+        body: formData,
       }
     )
     if (response.status !== 200 && response.status !== 204) {

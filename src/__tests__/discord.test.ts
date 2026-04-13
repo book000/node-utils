@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Discord } from '../discord'
-import FormData from 'form-data'
 
 // global.fetch をモック化
 const mockFetch = jest.fn()
@@ -27,21 +26,6 @@ FormData.prototype.append = jest.fn(
   }
 )
 
-// GetHeadersのモック
-const originalFormDataGetHeaders = FormData.prototype.getHeaders
-FormData.prototype.getHeaders = jest.fn(function (this: FormData) {
-  return {
-    'content-type':
-      'multipart/form-data; boundary=---------------------------1234',
-  }
-})
-
-// GetBufferのモック
-const originalFormDataGetBuffer = FormData.prototype.getBuffer
-FormData.prototype.getBuffer = jest.fn(function (this: FormData) {
-  return Buffer.from('')
-})
-
 // DiscordButtonStylesタイプの定数を定義（テスト用）
 const LinkStyle = 5 as const
 
@@ -62,8 +46,6 @@ describe('Discord', () => {
   afterAll(() => {
     // テスト後にFormDataのメソッドを復元
     FormData.prototype.append = originalFormDataAppend
-    FormData.prototype.getHeaders = originalFormDataGetHeaders
-    FormData.prototype.getBuffer = originalFormDataGetBuffer
   })
 
   describe('constructor', () => {
@@ -206,9 +188,7 @@ describe('Discord', () => {
       expect(FormData.prototype.append).toHaveBeenCalledWith(
         'file',
         expect.anything(),
-        expect.objectContaining({
-          filename: 'test.txt',
-        })
+        'test.txt'
       )
       expect(mockFetch).toHaveBeenCalled()
     })
@@ -232,9 +212,7 @@ describe('Discord', () => {
       expect(FormData.prototype.append).toHaveBeenCalledWith(
         'file',
         expect.anything(),
-        expect.objectContaining({
-          filename: 'SPOILER_test.txt',
-        })
+        'SPOILER_test.txt'
       )
       expect(mockFetch).toHaveBeenCalled()
     })
@@ -385,10 +363,7 @@ describe('Discord', () => {
       expect(FormData.prototype.append).toHaveBeenCalledWith(
         'file',
         expect.anything(),
-        expect.objectContaining({
-          filename: 'updated.txt',
-          contentType: 'text/plain',
-        })
+        'updated.txt'
       )
       expect(mockFetch).toHaveBeenCalled()
     })
