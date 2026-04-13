@@ -1,12 +1,20 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-import axios from 'axios'
 import { Discord } from '../discord'
 import FormData from 'form-data'
 
-// Axios をモック化
-jest.mock('axios')
-const mockedAxios = axios as jest.Mocked<typeof axios>
+// global.fetch をモック化
+const mockFetch = jest.fn()
+globalThis.fetch = mockFetch
+
+function createMockResponse(status: number, data: unknown): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: jest.fn().mockResolvedValue(data),
+    text: jest.fn().mockResolvedValue(JSON.stringify(data)),
+  } as unknown as Response
+}
 
 // FormDataのメソッドをスパイ
 const originalFormDataAppend = FormData.prototype.append
@@ -28,26 +36,34 @@ FormData.prototype.getHeaders = jest.fn(function (this: FormData) {
   }
 })
 
+// GetBufferのモック
+const originalFormDataGetBuffer = FormData.prototype.getBuffer
+FormData.prototype.getBuffer = jest.fn(function (this: FormData) {
+  return Buffer.from('')
+})
+
 // DiscordButtonStylesタイプの定数を定義（テスト用）
 const LinkStyle = 5 as const
 
 describe('Discord', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockedAxios.post.mockResolvedValue({
-      status: 200,
-      data: { id: 'mock-message-id' },
-    })
-    mockedAxios.patch.mockResolvedValue({ status: 200, data: {} })
+    mockFetch.mockResolvedValue(
+      createMockResponse(200, { id: 'mock-message-id' })
+    )
 
     // FormDataのモックをリセット
     jest.clearAllMocks()
+    mockFetch.mockResolvedValue(
+      createMockResponse(200, { id: 'mock-message-id' })
+    )
   })
 
   afterAll(() => {
     // テスト後にFormDataのメソッドを復元
     FormData.prototype.append = originalFormDataAppend
     FormData.prototype.getHeaders = originalFormDataGetHeaders
+    FormData.prototype.getBuffer = originalFormDataGetBuffer
   })
 
   describe('constructor', () => {
@@ -118,13 +134,13 @@ describe('Discord', () => {
       })
       const messageId = await discord.sendMessage('Test message')
 
-      expect(mockedAxios.post).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalled()
       expect(messageId).toBe('mock-message-id')
 
       // formDataのチェックは難しいので、URLとヘッダーのみ確認
-      const call = mockedAxios.post.mock.calls[0]
+      const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
       expect(call[0]).toContain('/channels/test-channel/messages')
-      expect(call[2]?.headers).toHaveProperty('Authorization', 'Bot test-token')
+      expect(call[1]?.headers).toHaveProperty('Authorization', 'Bot test-token')
     })
 
     it('should send an embed message via bot', async () => {
@@ -142,7 +158,7 @@ describe('Discord', () => {
 
       const messageId = await discord.sendMessage({ embeds })
 
-      expect(mockedAxios.post).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalled()
       expect(messageId).toBe('mock-message-id')
     })
 
@@ -168,7 +184,7 @@ describe('Discord', () => {
 
       const messageId = await discord.sendMessage({ components })
 
-      expect(mockedAxios.post).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalled()
       expect(messageId).toBe('mock-message-id')
     })
 
@@ -194,7 +210,7 @@ describe('Discord', () => {
           filename: 'test.txt',
         })
       )
-      expect(mockedAxios.post).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalled()
     })
 
     it('should send a file message with spoiler via bot', async () => {
@@ -220,7 +236,7 @@ describe('Discord', () => {
           filename: 'SPOILER_test.txt',
         })
       )
-      expect(mockedAxios.post).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalled()
     })
 
     it('should send a message with flags via bot', async () => {
@@ -231,7 +247,7 @@ describe('Discord', () => {
 
       const messageId = await discord.sendMessage({ flags: 4100 })
 
-      expect(mockedAxios.post).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalled()
       expect(messageId).toBe('mock-message-id')
     })
 
@@ -241,20 +257,17 @@ describe('Discord', () => {
       })
       const messageId = await discord.sendMessage('Test webhook message')
 
-      expect(mockedAxios.post).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalled()
       expect(messageId).toBe('mock-message-id')
 
-      const call = mockedAxios.post.mock.calls[0]
+      const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
       expect(call[0]).toContain(
         'https://discord.com/api/webhooks/123/abc?wait=true'
       )
     })
 
     it('should handle 204 status code for webhook messages', async () => {
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 204,
-        data: {}, // 204はデータがない場合も
-      })
+      mockFetch.mockResolvedValueOnce(createMockResponse(204, {}))
 
       const discord = new Discord({
         webhookUrl: 'https://discord.com/api/webhooks/123/abc',
@@ -267,10 +280,9 @@ describe('Discord', () => {
     })
 
     it('should handle API error for bot messages', async () => {
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 400,
-        data: { message: 'Bad Request' },
-      })
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse(400, { message: 'Bad Request' })
+      )
 
       const discord = new Discord({
         token: 'test-token',
@@ -282,10 +294,9 @@ describe('Discord', () => {
     })
 
     it('should handle API error for webhook messages', async () => {
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 404,
-        data: { message: 'Not Found' },
-      })
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse(404, { message: 'Not Found' })
+      )
 
       const discord = new Discord({
         webhookUrl: 'https://discord.com/api/webhooks/123/abc',
@@ -296,7 +307,7 @@ describe('Discord', () => {
     })
 
     it('should mock sendBot to throw error with webhook options', async () => {
-      mockedAxios.post.mockImplementationOnce(() => {
+      mockFetch.mockImplementationOnce(() => {
         throw new Error('Invalid bot options')
       })
 
@@ -305,12 +316,12 @@ describe('Discord', () => {
       })
 
       // sendMessageを使うと内部的にisDiscordBotOptionsで判定されて
-      // sendWebhookにリダイレクトされるため、axiosをモックして間接的にテスト
+      // sendWebhookにリダイレクトされるため、fetchをモックして間接的にテスト
       await expect(discord.sendMessage('Test message')).rejects.toThrow()
     })
 
     it('should mock sendWebhook to throw error with bot options', async () => {
-      mockedAxios.post.mockImplementationOnce(() => {
+      mockFetch.mockImplementationOnce(() => {
         throw new Error('Invalid webhook options')
       })
 
@@ -331,11 +342,11 @@ describe('Discord', () => {
       })
       await discord.editMessage('message-id', 'Updated message')
 
-      expect(mockedAxios.patch).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalled()
 
-      const call = mockedAxios.patch.mock.calls[0]
+      const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
       expect(call[0]).toContain('/channels/test-channel/messages/message-id')
-      expect(call[2]?.headers).toHaveProperty('Authorization', 'Bot test-token')
+      expect(call[1]?.headers).toHaveProperty('Authorization', 'Bot test-token')
     })
 
     it('should edit an embed message via bot', async () => {
@@ -353,7 +364,7 @@ describe('Discord', () => {
 
       await discord.editMessage('message-id', { embeds })
 
-      expect(mockedAxios.patch).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalled()
     })
 
     it('should edit a file message via bot', async () => {
@@ -379,7 +390,7 @@ describe('Discord', () => {
           contentType: 'text/plain',
         })
       )
-      expect(mockedAxios.patch).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalled()
     })
 
     it('should edit a message via webhook', async () => {
@@ -388,19 +399,16 @@ describe('Discord', () => {
       })
       await discord.editMessage('message-id', 'Updated webhook message')
 
-      expect(mockedAxios.patch).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalled()
 
-      const call = mockedAxios.patch.mock.calls[0]
+      const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
       expect(call[0]).toContain(
         'https://discord.com/api/webhooks/123/abc?wait=true/messages/message-id'
       )
     })
 
     it('should handle 204 status code for webhook message edit', async () => {
-      mockedAxios.patch.mockResolvedValueOnce({
-        status: 204,
-        data: {}, // 204はデータがない場合も
-      })
+      mockFetch.mockResolvedValueOnce(createMockResponse(204, {}))
 
       const discord = new Discord({
         webhookUrl: 'https://discord.com/api/webhooks/123/abc',
@@ -409,14 +417,13 @@ describe('Discord', () => {
       await discord.editMessage('message-id', 'Test webhook message')
 
       // 正常に完了するはず
-      expect(mockedAxios.patch).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalled()
     })
 
     it('should handle API error for bot message edit', async () => {
-      mockedAxios.patch.mockResolvedValueOnce({
-        status: 400,
-        data: { message: 'Bad Request' },
-      })
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse(400, { message: 'Bad Request' })
+      )
 
       const discord = new Discord({
         token: 'test-token',
@@ -428,10 +435,9 @@ describe('Discord', () => {
     })
 
     it('should handle API error for webhook message edit', async () => {
-      mockedAxios.patch.mockResolvedValueOnce({
-        status: 404,
-        data: { message: 'Not Found' },
-      })
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse(404, { message: 'Not Found' })
+      )
 
       const discord = new Discord({
         webhookUrl: 'https://discord.com/api/webhooks/123/abc',
@@ -442,7 +448,7 @@ describe('Discord', () => {
     })
 
     it('should mock editBot to throw error with webhook options', async () => {
-      mockedAxios.patch.mockImplementationOnce(() => {
+      mockFetch.mockImplementationOnce(() => {
         throw new Error('Invalid bot options')
       })
 
@@ -456,7 +462,7 @@ describe('Discord', () => {
     })
 
     it('should mock editWebhook to throw error with bot options', async () => {
-      mockedAxios.patch.mockImplementationOnce(() => {
+      mockFetch.mockImplementationOnce(() => {
         throw new Error('Invalid webhook options')
       })
 
@@ -483,7 +489,7 @@ describe('Discord', () => {
       await discord.sendMessage('Test message')
 
       // Bot APIのURLが呼ばれていることを確認
-      const call = mockedAxios.post.mock.calls[0]
+      const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
       expect(call[0]).toContain('/channels/test-channel/messages')
     })
 
@@ -494,7 +500,7 @@ describe('Discord', () => {
       await discord.sendMessage('Test message')
 
       // Webhook APIのURLが呼ばれていることを確認
-      const call = mockedAxios.post.mock.calls[0]
+      const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
       expect(call[0]).toContain('https://discord.com/api/webhooks/123/abc')
     })
 

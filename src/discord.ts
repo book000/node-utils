@@ -1,4 +1,3 @@
-import axios from 'axios'
 import FormData from 'form-data'
 
 interface DiscordBotOptions {
@@ -208,26 +207,26 @@ export class Discord {
       throw new Error('Invalid bot options')
     }
 
-    const response = await axios.post<{
-      id: string
-    }>(
+    const response = await fetch(
       `https://discord.com/api/channels/${this.options.channelId}/messages`,
-      formData,
       {
+        method: 'POST',
         headers: {
           ...formData.getHeaders(),
           Authorization: `Bot ${this.options.token}`,
         },
-        validateStatus: () => true,
+        body: formData.getBuffer(),
       }
     )
     if (response.status !== 200) {
+      const data = await response.json()
       throw new Error(
-        `Discord API returned ${response.status}: ${JSON.stringify(response.data)}`
+        `Discord API returned ${response.status}: ${JSON.stringify(data)}`
       )
     }
 
-    return response.data.id
+    const data = (await response.json()) as { id: string }
+    return data.id
   }
 
   private async sendWebhook(formData: FormData): Promise<string> {
@@ -238,21 +237,26 @@ export class Discord {
     const urlObject = new URL(this.options.webhookUrl)
     urlObject.searchParams.append('wait', 'true')
 
-    const response = await axios.post<{
-      id: string
-    }>(urlObject.toString(), formData, {
+    const response = await fetch(urlObject.toString(), {
+      method: 'POST',
       headers: {
         ...formData.getHeaders(),
       },
-      validateStatus: () => true,
+      body: formData.getBuffer(),
     })
     if (response.status !== 200 && response.status !== 204) {
+      const data = await response.json()
       throw new Error(
-        `Discord API returned ${response.status}: ${JSON.stringify(response.data)}`
+        `Discord API returned ${response.status}: ${JSON.stringify(data)}`
       )
     }
 
-    return response.data.id
+    if (response.status === 204) {
+      return undefined as unknown as string
+    }
+
+    const data = (await response.json()) as { id: string }
+    return data.id
   }
 
   public async editMessage(
@@ -293,20 +297,21 @@ export class Discord {
       throw new Error('Invalid bot options')
     }
 
-    const response = await axios.patch(
+    const response = await fetch(
       `https://discord.com/api/channels/${this.options.channelId}/messages/${messageId}`,
-      formData,
       {
+        method: 'PATCH',
         headers: {
           ...formData.getHeaders(),
           Authorization: `Bot ${this.options.token}`,
         },
-        validateStatus: () => true,
+        body: formData.getBuffer(),
       }
     )
     if (response.status !== 200) {
+      const data = await response.json()
       throw new Error(
-        `Discord API returned ${response.status}: ${JSON.stringify(response.data)}`
+        `Discord API returned ${response.status}: ${JSON.stringify(data)}`
       )
     }
   }
@@ -322,20 +327,19 @@ export class Discord {
     const urlObject = new URL(this.options.webhookUrl)
     urlObject.searchParams.append('wait', 'true')
 
-    const response = await axios.patch(
+    const response = await fetch(
       `${urlObject.toString()}/messages/${messageId}`,
-      formData,
       {
+        method: 'PATCH',
         headers: {
           ...formData.getHeaders(),
         },
-        validateStatus: () => true,
+        body: formData.getBuffer(),
       }
     )
     if (response.status !== 200 && response.status !== 204) {
-      throw new Error(
-        `Discord API returned ${response.status}: ${response.data}`
-      )
+      const text = await response.text()
+      throw new Error(`Discord API returned ${response.status}: ${text}`)
     }
   }
 
