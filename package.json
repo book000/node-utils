@@ -40,7 +40,7 @@
     "cycle": "1.0.3",
     
     "jsonc-parser": "3.3.1",
-    "moment-timezone": "0.6.1",
+    "moment-timezone": "0.6.2",
     "winston": "3.19.0",
     "winston-daily-rotate-file": "5.0.0"
   },
