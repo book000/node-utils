@@ -62,11 +62,11 @@ jobs:
       - name: 🗑️ Remove examples directory
         run: rm -rfv src/examples
 
-      - name: 🔍 Lint
-        run: pnpm run lint
-
       - name: 🏃 Build
         run: pnpm run build
+
+      - name: 🔍 Lint
+        run: pnpm run lint
 
       - name: 🏷 Bump version and push tag
         id: tag-version
@@ -81,12 +81,14 @@ jobs:
           pnpm version --no-git-tag-version ${{ steps.tag-version.outputs.new_version }}
 
       - name: 📦 Pack
+        id: pack
         run: |
-          pnpm pack --ignore-scripts
+          TARBALL=$(pnpm pack --ignore-scripts)
+          echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
 
       - name: 📦 Publish
         run: |
-          pnpm publish "$(ls book000-node-utils-*.tgz)" --access public --no-git-checks
+          pnpm publish "${{ steps.pack.outputs.tarball }}" --access public --no-git-checks
 
       - name: 📃 Create Release
         id: create_release
