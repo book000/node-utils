@@ -80,9 +80,13 @@ jobs:
         run: |
           pnpm version --no-git-tag-version ${{ steps.tag-version.outputs.new_version }}
 
+      - name: 📦 Pack
+        run: |
+          pnpm pack --ignore-scripts
+
       - name: 📦 Publish
         run: |
-          pnpm publish --access public --no-git-checks --ignore-scripts
+          pnpm publish "$(ls book000-node-utils-*.tgz)" --access public --no-git-checks
 
       - name: 📃 Create Release
         id: create_release
