@@ -83,8 +83,7 @@ jobs:
       - name: 📦 Pack
         id: pack
         run: |
-          jq 'del(.scripts.prepare)' package.json > package.json.tmp && mv package.json.tmp package.json
-          TARBALL=$(pnpm pack 2>/dev/null | tail -n 1)
+          TARBALL=$(npm_config_ignore_scripts=true pnpm pack 2>/dev/null | tail -n 1)
           echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
 
       - name: 📦 Publish
