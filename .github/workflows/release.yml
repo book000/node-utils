@@ -65,6 +65,9 @@ jobs:
       - name: 🏃 Build
         run: pnpm run build
 
+      - name: 🔍 Lint
+        run: pnpm run lint
+
       - name: 🏷 Bump version and push tag
         id: tag-version
         uses: mathieudutour/github-tag-action@v6.2
@@ -77,9 +80,15 @@ jobs:
         run: |
           pnpm version --no-git-tag-version ${{ steps.tag-version.outputs.new_version }}
 
+      - name: 📦 Pack
+        id: pack
+        run: |
+          TARBALL=$(pnpm pack --ignore-scripts)
+          echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
+
       - name: 📦 Publish
         run: |
-          pnpm publish --access public --no-git-checks
+          pnpm publish "${{ steps.pack.outputs.tarball }}" --access public --no-git-checks
 
       - name: 📃 Create Release
         id: create_release
