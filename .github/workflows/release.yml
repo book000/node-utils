@@ -83,7 +83,7 @@ jobs:
       - name: 📦 Pack
         id: pack
         run: |
-          TARBALL=$(pnpm pack --ignore-scripts)
+          TARBALL=$(npm_config_ignore_scripts=true pnpm pack 2>/dev/null | tail -n 1)
           echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
 
       - name: 📦 Publish
