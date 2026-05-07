@@ -67,7 +67,7 @@
     "winston-daily-rotate-file": "5.0.0",
     "yarn-run-all": "3.1.1"
   },
-  "packageManager": "pnpm@10.33.2",
+  "packageManager": "pnpm@10.33.3",
   "jest": {
     "transform": {
       "^.+\\.ts$": [
