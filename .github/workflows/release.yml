@@ -78,7 +78,9 @@ jobs:
 
       - name: 📝 Update package.json version
         run: |
-          pnpm version --no-git-tag-version ${{ steps.tag-version.outputs.new_version }}
+          # pnpm v11 ではワーキングツリーが clean でないと pnpm version が拒否するため、
+          # --no-git-checks フラグを追加してチェックをスキップする
+          pnpm version --no-git-tag-version --no-git-checks ${{ steps.tag-version.outputs.new_version }}
 
       - name: 📦 Pack
         id: pack
