@@ -59,15 +59,6 @@ jobs:
       - name: 👨🏻‍💻 Install dependencies
         run: pnpm install --frozen-lockfile --prefer-frozen-lockfile
 
-      - name: 🗑️ Remove examples directory
-        run: rm -rfv src/examples
-
-      - name: 🏃 Build
-        run: pnpm run build
-
-      - name: 🔍 Lint
-        run: pnpm run lint
-
       - name: 🏷 Bump version and push tag
         id: tag-version
         uses: mathieudutour/github-tag-action@v6.2
@@ -78,7 +69,18 @@ jobs:
 
       - name: 📝 Update package.json version
         run: |
+          # pnpm version を rm -rfv src/examples より前に実行することで、
+          # ワーキングツリーが clean な状態を保ちチェックをパスさせる
           pnpm version --no-git-tag-version ${{ steps.tag-version.outputs.new_version }}
+
+      - name: 🗑️ Remove examples directory
+        run: rm -rfv src/examples
+
+      - name: 🏃 Build
+        run: pnpm run build
+
+      - name: 🔍 Lint
+        run: pnpm run lint
 
       - name: 📦 Pack
         id: pack
