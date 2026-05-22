@@ -84,11 +84,9 @@ jobs:
 
       - name: 📦 Pack
         id: pack
-        env:
-          npm_config_ignore_scripts: 'true'
         run: |
           set -eo pipefail
-          TARBALL=$(pnpm pack --json | jq -r '.filename')
+          TARBALL=$(pnpm --config.ignore-scripts=true pack --json | jq -r '.filename')
           if [ -z "$TARBALL" ] || [ ! -f "$TARBALL" ]; then
             echo "::error::Failed to determine packed tarball filename"
             exit 1
