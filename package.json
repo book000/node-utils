@@ -25,7 +25,7 @@
     "build": "run-s clean ctix compile",
     "prepublishOnly": "run-s lint",
     "prepare": "run-s build",
-    "clean": "rimraf dist output",
+    "clean": "rimraf dist output tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo",
     "example": "tsx ./src/examples/main.ts",
     "lint:prettier": "prettier --check src",
     "lint:tsc": "tsc",

@@ -79,23 +79,27 @@ jobs:
       - name: 🏃 Build
         run: pnpm run build
 
+      - name: 🔍 Verify dist contents
+        run: |
+          test -f dist/index.js
+          test -f dist/index.d.ts
+
+      - name: 📦 Verify pack contents
+        run: |
+          mkdir -p /tmp/pack-check
+          pnpm pack --pack-destination /tmp/pack-check
+          TARBALL=$(ls /tmp/pack-check/*.tgz | head -1)
+          echo "Inspecting $TARBALL"
+          tar -tzf "$TARBALL" | tee /tmp/pack-files.txt
+          grep -q '^package/dist/index.js$' /tmp/pack-files.txt
+          grep -q '^package/dist/index.d.ts$' /tmp/pack-files.txt
+
       - name: 🔍 Lint
         run: pnpm run lint
 
-      - name: 📦 Pack
-        id: pack
-        run: |
-          set -eo pipefail
-          TARBALL=$(pnpm --config.ignore-scripts=true pack --json | jq -r '.filename')
-          if [ -z "$TARBALL" ] || [ ! -f "$TARBALL" ]; then
-            echo "::error::Failed to determine packed tarball filename"
-            exit 1
-          fi
-          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
-
       - name: 📦 Publish
         run: |
-          pnpm publish "${{ steps.pack.outputs.tarball }}" --access public --no-git-checks
+          pnpm publish --access public --no-git-checks --ignore-scripts
 
       - name: 📃 Create Release
         id: create_release
