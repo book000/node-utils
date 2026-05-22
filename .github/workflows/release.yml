@@ -84,9 +84,16 @@ jobs:
 
       - name: 📦 Pack
         id: pack
+        env:
+          npm_config_ignore_scripts: 'true'
         run: |
-          TARBALL=$(npm_config_ignore_scripts=true pnpm pack 2>/dev/null | tail -n 1)
-          echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
+          set -eo pipefail
+          TARBALL=$(pnpm pack --json | jq -r '.filename')
+          if [ -z "$TARBALL" ] || [ ! -f "$TARBALL" ]; then
+            echo "::error::Failed to determine packed tarball filename"
+            exit 1
+          fi
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
 
       - name: 📦 Publish
         run: |
