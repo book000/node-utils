@@ -69,9 +69,7 @@ jest.mock('moment-timezone', () => {
   // モックを定義
   const mockMomentObj: MockMomentObj = {
     format: jest.fn(() => '2025-05-05 12:00:00.000'),
-    tz: jest.fn(function (this: MockMomentObj) {
-      return this
-    }),
+    tz: jest.fn(() => mockMomentObj),
   }
 
   // モックの関数を作成
