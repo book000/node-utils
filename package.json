@@ -21,7 +21,7 @@
     "start": "tsx ./src/main.ts",
     "dev": "tsx watch ./src/main.ts",
     "compile": "tsc -p tsconfig.build.json",
-    "ctix": "ctix single -w --noBackup -o src -s false",
+    "ctix": "ctix build --mode bundle -o src -w --backup false --use-semicolon false --generation-style default-alias-named-star -p tsconfig.build.json",
     "build": "run-s clean ctix compile",
     "prepublishOnly": "run-s lint",
     "prepare": "run-s build",
