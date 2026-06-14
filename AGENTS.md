@@ -84,8 +84,8 @@ pnpm fix
 
 ## リポジトリ固有
 
-- ctix により `src/index.ts` が自動生成される。手動編集は禁止。
-- `src/examples/**` は Index ファイル生成対象外。
+- ctix (v2 系、`ctix build --mode bundle`) により `src/index.ts` が自動生成される。手動編集は禁止。
+- `src/examples/**` は Index ファイル生成対象外 (`ctix` コマンドに `-p tsconfig.build.json` を指定し、`tsconfig.build.json` の `exclude` 設定で除外)。
 - Renovate による自動依存更新が有効。Renovate が作成した既存の PR に対して追加コミットや更新を行わない。
 - 発行前に `npm run lint` が自動実行される。
 - npm install 後に `npm run build` が自動実行される。
