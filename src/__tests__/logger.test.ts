@@ -94,7 +94,7 @@ describe('Logger', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    Logger.resetForTesting()
+    Logger.closeAll()
     process.env = { ...originalEnv }
     // 環境変数を初期化
     delete process.env.LOG_LEVEL
@@ -163,20 +163,20 @@ describe('Logger', () => {
       )
     })
 
-    it('should create a new instance after resetForTesting is called', () => {
+    it('should create a new instance after closeAll is called', () => {
       const first = Logger.configure('cache-test-reset')
-      Logger.resetForTesting()
+      Logger.closeAll()
       const second = Logger.configure('cache-test-reset')
 
       expect(second).not.toBe(first)
       expect(winston.createLogger).toHaveBeenCalledTimes(2)
     })
 
-    it('should close cached winston loggers when resetForTesting is called', () => {
+    it('should close cached winston loggers when closeAll is called', () => {
       const instance = Logger.configure('cache-test-close')
       const mockLogger = winston.createLogger({ transports: [] })
 
-      Logger.resetForTesting()
+      Logger.closeAll()
 
       expect(mockLogger.close).toHaveBeenCalled()
       expect(instance).toBeInstanceOf(Logger)

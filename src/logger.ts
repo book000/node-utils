@@ -189,14 +189,15 @@ export class Logger {
   }
 
   /**
-   * テスト用途: 内部キャッシュをクリアする
+   * キャッシュされている全ての Logger を close() し、内部キャッシュをクリアする
    *
-   * category ごとの Logger インスタンスキャッシュを破棄し、次回の configure() 呼び出しで
-   * 新規に生成し直させる。破棄前にキャッシュ済みの各 winston Logger (トランスポート含む) を
-   * close() し、実トランスポートを使うテストで open handle が残らないようにする。
-   * プロダクションコードから呼び出すことは想定していない。
+   * category ごとにキャッシュされた各 winston Logger (トランスポート含む) を明示的に
+   * close() してからキャッシュを破棄するため、次回の configure() 呼び出しでは
+   * category ごとに新規インスタンスが生成し直される。プロセス終了処理や、テスト間で
+   * ロガーの状態をリセットしたい場合など、キャッシュ済みロガーのファイルディスクリプタを
+   * まとめて解放したいときに使用する。
    */
-  public static resetForTesting(): void {
+  public static closeAll(): void {
     for (const instance of this.cache.values()) {
       instance.logger.close()
     }
