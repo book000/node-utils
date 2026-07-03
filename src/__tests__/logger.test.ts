@@ -151,10 +151,10 @@ describe('Logger', () => {
       process.env.LOG_LEVEL = 'debug'
       Logger.configure('cache-test-env')
 
-      // 2回目の呼び出しではWinstonDailyRotateFile / createLoggerが再度呼ばれない
+      // 2 回目の呼び出しでは WinstonDailyRotateFile / createLogger が再度呼ばれない
       expect(winston.createLogger).toHaveBeenCalledTimes(1)
       expect(WinstonDailyRotateFile).toHaveBeenCalledTimes(1)
-      // 1回目呼び出し時点ではLOG_LEVEL未設定だったため、デフォルト値のままである
+      // 1 回目呼び出し時点では LOG_LEVEL 未設定だったため、デフォルト値のままである
       expect(winston.transports.Console).toHaveBeenCalledWith(
         expect.objectContaining({
           level: 'info',
