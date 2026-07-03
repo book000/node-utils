@@ -17,6 +17,8 @@ const getTimestampFormatter = (): string => {
 }
 
 export class Logger {
+  private static readonly cache = new Map<string, Logger>()
+
   private readonly logger: winston.Logger
 
   private constructor(logger: winston.Logger) {
@@ -66,7 +68,11 @@ export class Logger {
   /**
    * ロガーを初期化・設定する
    *
-   * 環境変数で以下の設定が可能
+   * 同一 category に対する 2 回目以降の呼び出しでは、初回生成時のインスタンスをそのまま返す
+   * (環境変数を変更していても再生成されない)。これにより、ループや高頻度呼び出しによる
+   * ファイルディスクリプタリークを防止する。
+   *
+   * 環境変数で以下の設定が可能 (初回呼び出し時のみ反映される)
    * - LOG_LEVEL: ログレベル (デフォルト info)
    * - LOG_FILE_LEVEL: ファイル出力のログレベル (デフォルト info)
    * - LOG_DIR: ログ出力先 (デフォルト logs)。Vercelで動作する場合は /tmp/logs に出力する
@@ -74,9 +80,14 @@ export class Logger {
    * - LOG_FILE_FORMAT: ログファイルのフォーマット (デフォルト text)
    *
    * @param category カテゴリ
-   * @returns ロガー
+   * @returns ロガー (同一 category では既存インスタンスを再利用する)
    */
   public static configure(category: string): Logger {
+    const cached = this.cache.get(category)
+    if (cached) {
+      return cached
+    }
+
     const logLevel = process.env.LOG_LEVEL ?? 'info'
     const logFileLevel = process.env.LOG_FILE_LEVEL ?? 'info'
     const logDirectory = process.env.VERCEL
@@ -168,7 +179,9 @@ export class Logger {
         transportRotateFile,
       ],
     })
-    return new Logger(logger)
+    const instance = new Logger(logger)
+    this.cache.set(category, instance)
+    return instance
   }
 
   static getTimestamp(): () => string {

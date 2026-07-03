@@ -128,6 +128,49 @@ describe('Logger', () => {
       expect(logger).toBeInstanceOf(Logger)
     })
 
+    it('should return the cached instance for the same category on second call', () => {
+      const first = Logger.configure('cache-test')
+      const second = Logger.configure('cache-test')
+
+      expect(second).toBe(first)
+      expect(winston.createLogger).toHaveBeenCalledTimes(1)
+    })
+
+    it('should create separate instances for different categories', () => {
+      const first = Logger.configure('cache-test-a')
+      const second = Logger.configure('cache-test-b')
+
+      expect(second).not.toBe(first)
+      expect(winston.createLogger).toHaveBeenCalledTimes(2)
+    })
+
+    it('should not reflect environment variable changes on a cached category', () => {
+      Logger.configure('cache-test-env')
+
+      process.env.LOG_LEVEL = 'debug'
+      Logger.configure('cache-test-env')
+
+      // 2回目の呼び出しではWinstonDailyRotateFile / createLoggerが再度呼ばれない
+      expect(winston.createLogger).toHaveBeenCalledTimes(1)
+      expect(WinstonDailyRotateFile).toHaveBeenCalledTimes(1)
+      // 1回目呼び出し時点ではLOG_LEVEL未設定だったため、デフォルト値のままである
+      expect(winston.transports.Console).toHaveBeenCalledWith(
+        expect.objectContaining({
+          level: 'info',
+        })
+      )
+    })
+
+    // NOTE: Task 2 で Logger.resetForTesting() を実装後にコメントアウトを解除する
+    // it('should create a new instance after resetForTesting is called', () => {
+    //   const first = Logger.configure('cache-test-reset')
+    //   Logger.resetForTesting()
+    //   const second = Logger.configure('cache-test-reset')
+    //
+    //   expect(second).not.toBe(first)
+    //   expect(winston.createLogger).toHaveBeenCalledTimes(2)
+    // })
+
     it('should use LOG_LEVEL environment variable when provided', () => {
       process.env.LOG_LEVEL = 'debug'
 
