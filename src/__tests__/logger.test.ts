@@ -93,6 +93,7 @@ describe('Logger', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    Logger.resetForTesting()
     process.env = { ...originalEnv }
     // 環境変数を初期化
     delete process.env.LOG_LEVEL
@@ -161,15 +162,14 @@ describe('Logger', () => {
       )
     })
 
-    // NOTE: Task 2 で Logger.resetForTesting() を実装後にコメントアウトを解除する
-    // it('should create a new instance after resetForTesting is called', () => {
-    //   const first = Logger.configure('cache-test-reset')
-    //   Logger.resetForTesting()
-    //   const second = Logger.configure('cache-test-reset')
-    //
-    //   expect(second).not.toBe(first)
-    //   expect(winston.createLogger).toHaveBeenCalledTimes(2)
-    // })
+    it('should create a new instance after resetForTesting is called', () => {
+      const first = Logger.configure('cache-test-reset')
+      Logger.resetForTesting()
+      const second = Logger.configure('cache-test-reset')
+
+      expect(second).not.toBe(first)
+      expect(winston.createLogger).toHaveBeenCalledTimes(2)
+    })
 
     it('should use LOG_LEVEL environment variable when provided', () => {
       process.env.LOG_LEVEL = 'debug'

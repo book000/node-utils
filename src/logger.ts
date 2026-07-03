@@ -184,6 +184,16 @@ export class Logger {
     return instance
   }
 
+  /**
+   * テスト用途: 内部キャッシュをクリアする
+   *
+   * category ごとの Logger インスタンスキャッシュを破棄し、次回の configure() 呼び出しで
+   * 新規に生成し直させる。プロダクションコードから呼び出すことは想定していない。
+   */
+  public static resetForTesting(): void {
+    this.cache.clear()
+  }
+
   static getTimestamp(): () => string {
     // 'YYYY-MM-DD hh:mm:ss.SSS'
     // Asia/Tokyo
