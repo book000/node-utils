@@ -72,6 +72,10 @@ export class Logger {
    * (環境変数を変更していても再生成されない)。これにより、ループや高頻度呼び出しによる
    * ファイルディスクリプタリークを防止する。
    *
+   * 内部キャッシュは category ごとに自動解放されないため、ユーザー ID やリクエスト ID など
+   * 高カーディナリティな値を category に使うとキャッシュが無制限に肥大化する。category には
+   * クラス名・モジュール名など固定かつ低カーディナリティな値を指定すること。
+   *
    * 環境変数で以下の設定が可能 (初回呼び出し時のみ反映される)
    * - LOG_LEVEL: ログレベル (デフォルト info)
    * - LOG_FILE_LEVEL: ファイル出力のログレベル (デフォルト info)
@@ -188,9 +192,14 @@ export class Logger {
    * テスト用途: 内部キャッシュをクリアする
    *
    * category ごとの Logger インスタンスキャッシュを破棄し、次回の configure() 呼び出しで
-   * 新規に生成し直させる。プロダクションコードから呼び出すことは想定していない。
+   * 新規に生成し直させる。破棄前にキャッシュ済みの各 winston Logger (トランスポート含む) を
+   * close() し、実トランスポートを使うテストで open handle が残らないようにする。
+   * プロダクションコードから呼び出すことは想定していない。
    */
   public static resetForTesting(): void {
+    for (const instance of this.cache.values()) {
+      instance.logger.close()
+    }
     this.cache.clear()
   }
 

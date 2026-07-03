@@ -39,6 +39,7 @@ jest.mock('winston', () => {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
+    close: jest.fn(),
   }
 
   return {
@@ -169,6 +170,16 @@ describe('Logger', () => {
 
       expect(second).not.toBe(first)
       expect(winston.createLogger).toHaveBeenCalledTimes(2)
+    })
+
+    it('should close cached winston loggers when resetForTesting is called', () => {
+      const instance = Logger.configure('cache-test-close')
+      const mockLogger = winston.createLogger({ transports: [] })
+
+      Logger.resetForTesting()
+
+      expect(mockLogger.close).toHaveBeenCalled()
+      expect(instance).toBeInstanceOf(Logger)
     })
 
     it('should use LOG_LEVEL environment variable when provided', () => {
