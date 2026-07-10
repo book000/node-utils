@@ -1,226 +1,75 @@
-# Claude Code 作業方針
+# CLAUDE.md
 
-## 目的
-
-このドキュメントは、Claude Code がこのプロジェクトで作業する際の方針とルールを定義します。
-
-## 判断記録のルール
-
-Claude Code は、すべての重要な判断を以下の形式で記録しなければなりません:
-
-1. **判断内容の要約**: 何を決定したか
-2. **検討した代替案**: 他にどのような選択肢があったか
-3. **採用しなかった案とその理由**: なぜその案を選ばなかったか
-4. **前提条件・仮定・不確実性**: どのような前提に基づいているか、何が不確実か
-5. **他エージェントによるレビュー可否**: 他のエージェント (Codex CLI, Gemini CLI) にレビューを依頼すべきか
-
-**重要**: 前提・仮定・不確実性を明示すること。仮定を事実のように扱ってはなりません。
+このファイルは Claude Code がこのリポジトリで作業する際の方針を定義します。
 
 ## プロジェクト概要
 
-- プロジェクト名: @book000/node-utils
-- 目的: TypeScript による個人向けユーティリティライブラリの開発
-- 主な機能:
-  - **Logger**: Winston ベースのロガーラッパークラス (日本のタイムゾーン対応、日次ローテーション、NDJSON 対応)
-  - **ConfigFramework**: JSONC 形式の設定ファイル管理フレームワーク (バリデーション機能、環境変数対応)
-  - **Discord**: Discord Bot / Webhook を使用したメッセージ送信ユーティリティ (埋め込み、ファイル送信、リンクボタン対応)
-- npm パッケージとして公開され、開発者が利用する
+`@book000/node-utils` は TypeScript 製の個人向けユーティリティライブラリで、npm パッケージとして公開されます。主な機能:
 
-## 重要ルール
-
-- **会話言語**: 日本語
-- **コード内コメント**: 日本語 (JSDoc など)
-- **エラーメッセージ**: 英語
-- **日本語と英数字の間**: 半角スペースを挿入
-- **コミットメッセージ**: Conventional Commits に従い、`<description>` は日本語で記載
-- **ブランチ命名**: Conventional Branch に従い、`<type>` は短縮形 (feat, fix, docs など) を使用
-
-## 環境のルール
-
-- **ブランチ命名**: Conventional Branch (`<type>/<description>`) に従う
-- **GitHub リポジトリ調査**: テンポラリディレクトリに git clone して、そこでコード検索する
-- **Renovate PR の扱い**: Renovate が作成した既存の PR に対して、追加コミットや更新を行ってはならない
-
-## コード改修時のルール
-
-- **エラーメッセージの絵文字**: 既存のエラーメッセージで先頭に絵文字がある場合は、全体で統一する
-- **TypeScript の skipLibCheck**: 有効にして回避することは絶対にしてはならない
-- **docstring 記載**: 関数やインターフェースには、JSDoc コメントを日本語で記載・更新する
-
-## 相談ルール
-
-他エージェントに相談することができます。以下の観点で使い分けてください:
-
-### Codex CLI (ask-codex)
-
-以下の場合に使用:
-
-- 実装コードに対するソースコードレビュー
-- 関数設計、モジュール内部の実装方針などの局所的な技術判断
-- アーキテクチャ、モジュール間契約、パフォーマンス・セキュリティといった全体影響の判断
-- 実装の正当性確認、機械的ミスの検出、既存コードとの整合性確認
-
-### Gemini CLI (ask-gemini)
-
-以下の場合に使用:
-
-- SaaS 仕様、言語・ランタイムのバージョン差、料金・制限・クォータといった、最新の適切な情報が必要な外部依存の判断
-- 外部一次情報の確認、最新仕様の調査、外部前提条件の検証
-
-### 指摘への対応ルール
-
-他エージェントが指摘・異議を提示した場合、Claude Code は必ず以下のいずれかを行う。**黙殺・無言での不採用は禁止する**。
-
-- 指摘を受け入れ、判断を修正する
-- 指摘を退け、その理由を明示する
-
-以下を必ず実施する:
-
-- 他エージェントの提案を鵜呑みにせず、その根拠や理由を理解する
-- 自身の分析結果と他エージェントの意見が異なる場合は、双方の視点を比較検討する
-- 最終的な判断は、両者の意見を総合的に評価した上で、自身で下す
+- **Logger** (`src/logger.ts`): Winston ベースのロガーラッパー。日本タイムゾーン対応、日次ローテーション、NDJSON 対応。
+- **ConfigFramework** (`src/configuration.ts`): JSONC 形式の設定ファイル管理フレームワーク。バリデーション・環境変数対応。
+- **Discord** (`src/discord.ts`): Discord Bot / Webhook でのメッセージ送信ユーティリティ。埋め込み・ファイル送信・リンクボタン対応。
 
 ## 開発コマンド
 
+パッケージマネージャーは **pnpm 必須** (npm / yarn は使わない)。バージョンは `package.json` の `packageManager`、Node.js は `.node-version` を参照。
+
 ```bash
-# 依存関係のインストール (必須: pnpm を使用)
-pnpm install
-
-# TypeScript ファイルを実行
-pnpm start
-
-# ファイル変更監視モードで実行
-pnpm dev
-
-# Examples を実行
-pnpm example
-
-# ビルド (ctix 生成 + TypeScript コンパイル)
-pnpm build
-
-# クリーン (dist と output ディレクトリを削除)
-pnpm clean
-
-# テスト実行 (カバレッジ報告付き)
-pnpm test
-
-# リント実行 (Prettier + TypeScript + ESLint)
-pnpm lint
-
-# 自動修正 (Prettier + ESLint)
-pnpm fix
+pnpm install    # 依存関係のインストール
+pnpm build      # ビルド (clean → ctix で index.ts 生成 → tsc コンパイル)
+pnpm test       # Jest でテスト (カバレッジ付き)
+pnpm lint       # Prettier + ESLint + tsc による検査 (CI と同等)
+pnpm fix        # Prettier + ESLint の自動修正
+pnpm example    # src/examples/main.ts を実行
 ```
 
-## アーキテクチャと主要ファイル
+## アーキテクチャ
 
-### アーキテクチャサマリー
-
-- **パッケージ構造**: 単一パッケージ (モノレポではない)
-- **ビルド方式**: TypeScript コンパイラ + ctix (Index ファイル自動生成)
-- **エクスポート**: `src/index.ts` (ctix により自動生成) から主要クラスをエクスポート
-- **配布**: `dist/` ディレクトリのみを npm に発行
+- 単一パッケージ (モノレポではない)。`dist/` のみを npm に発行する (`package.json` の `files`)。
+- `src/index.ts` は **ctix (`ctix build --mode bundle`) により自動生成される。手動編集禁止**。
+- `src/examples/**` はライブラリ本体に含めない。ビルドは `tsconfig.build.json` を使い examples / tests を除外する。
+- CI は `book000/templates` の再利用可能ワークフロー (`reusable-nodejs-ci-pnpm.yml`) を利用。Node.js バージョンは `.node-version` に従う。
 
 ### 主要ディレクトリ
 
-- `src/`: ソースコード
-  - `logger.ts`: Logger クラス
-  - `configuration.ts`: ConfigFramework クラス
-  - `discord.ts`: Discord クラス
-  - `index.ts`: エクスポートファイル (ctix により自動生成、手動編集禁止)
-  - `__tests__/`: テストファイル
-  - `examples/`: 使用例 (ビルドから除外)
-- `dist/`: ビルド出力 (npm に発行)
-- `.github/workflows/`: CI/CD 設定
+- `src/`: ソースコード (`logger.ts` / `configuration.ts` / `discord.ts` / 自動生成の `index.ts`)
+- `src/__tests__/`: テスト (`*.test.ts`)
+- `src/examples/`: 使用例 (ビルド対象外)
 
-## 実装パターン
+## コーディング規約
 
-### 推奨パターン
-
-- **環境変数対応**: 主要な設定項目は環境変数で上書き可能にする (Logger, ConfigFramework の実装を参考)
-- **型安全性**: ジェネリクスを活用し、型安全な API を提供する (ConfigFramework の実装を参考)
-- **エラーハンドリング**: 適切な例外を throw し、エラーメッセージは英語で記載する
-- **ロギング**: Logger クラスを使用してログ出力を行う
-
-### 非推奨パターン
-
-- `skipLibCheck` の有効化
-- `any` 型の多用
-- 環境変数を直接参照せず、設定クラスを経由する
+- **会話・コメント**: 日本語。関数・インターフェースには日本語の JSDoc を付ける。
+- **エラーメッセージ**: 英語。
+- **日本語と英数字の間**: 半角スペースを入れる。
+- **フォーマット**: Prettier (`.prettierrc.yml`)。セミコロンなし、シングルクォート、インデント 2 スペース、行幅 80。
+- **TypeScript**: strict モード。`skipLibCheck` による回避は禁止。パス別名 `@/*` → `src/*`。
+- **命名**: クラス / 型は PascalCase、関数・変数は camelCase。
+- **設計パターン**: 主要な設定値は環境変数で上書き可能にする (Logger / ConfigFramework を参照)。ジェネリクスで型安全な API を提供する。`any` の多用を避ける。
 
 ## テスト
 
-### テスト方針
-
-- テストフレームワーク: Jest + ts-jest
-- テストファイル配置: `src/__tests__/*.test.ts`
-- テストコマンド: `pnpm test`
-- カバレッジ対象: `src/**/*.ts` (examples, index.ts, 型定義ファイルを除く)
-
-### 追加テスト条件
-
-- 新規機能追加時は必ず対応するテストを追加する
-- 外部依存 (Winston, axios, moment-timezone など) は適切にモック化する
-- 環境変数による挙動の違いもテストする
+- Jest + ts-jest。テストは `src/__tests__/*.test.ts` に配置。
+- カバレッジ対象は `src/**/*.ts` (examples, `index.ts`, `*.d.ts` を除く)。
+- 新規機能には対応するテストを追加する。外部依存 (Winston, axios, moment-timezone など) はモック化する。
 
 ## ドキュメント更新ルール
 
-### 更新対象
+- 機能・使用方法の変更時は `README.md` を更新する。
+- 関数・インターフェースの変更時は JSDoc を更新する。
+- 開発コマンド・ディレクトリ構成・ビルド方式に変更が生じたら、この `CLAUDE.md` も更新する。
 
-- `README.md`: 主な機能や使用方法の変更時
-- JSDoc コメント: 関数・インターフェースの変更時
+## セキュリティ / 機密情報
 
-### 更新タイミング
+- API キーや認証情報を Git にコミットしない。環境変数で管理する。
+- ログに個人情報や認証情報を出力しない。
 
-- 新規機能追加時
-- 既存機能の変更時
-- API の変更時
+## 判断記録のルール
 
-## 作業チェックリスト
+重要な判断を行う際は、判断内容・検討した代替案・不採用の理由・前提/仮定/不確実性を記録する。前提・仮定・不確実性を明示し、仮定を事実として扱わない。
 
-### 新規改修時
+## リポジトリ固有の注意
 
-新規改修を行う前に、以下を必ず確認すること:
-
-1. プロジェクトについて詳細に探索し理解すること
-2. 作業を行うブランチが適切であること。すでに PR を提出しクローズされたブランチでないこと
-3. 最新のリモートブランチに基づいた新規ブランチであること
-4. PR がクローズされ、不要となったブランチは削除されていること
-5. プロジェクトで指定されたパッケージマネージャ (pnpm) により、依存パッケージをインストールしたこと
-
-### コミット・プッシュする前
-
-コミット・プッシュする前に、以下を必ず確認すること:
-
-1. コミットメッセージが Conventional Commits に従っていること。`<description>` は日本語で記載すること
-2. コミット内容にセンシティブな情報が含まれていないこと
-3. Lint / Format エラーが発生しないこと (`pnpm lint` を実行)
-4. 動作確認を行い、期待通り動作すること (`pnpm test` を実行)
-
-### プルリクエストを作成する前
-
-プルリクエストを作成する前に、以下を必ず確認すること:
-
-1. プルリクエストの作成をユーザーから依頼されていること
-2. コミット内容にセンシティブな情報が含まれていないこと
-3. コンフリクトする恐れが無いこと
-
-### プルリクエストを作成したあと
-
-プルリクエストを作成したあとは、以下を必ず実施すること。PR 作成後のプッシュ時に毎回実施する。時間がかかる処理が多いため、Task を使って並列実行すること:
-
-1. コンフリクトが発生していないこと
-2. PR 本文の内容は、ブランチの現在の状態を、今までのこの PR での更新履歴を含むことなく、最新の状態のみ、漏れなく日本語で記載されていること。この PR を見たユーザーが、最終的にどのような変更を含む PR なのかをわかりやすく、細かく記載されていること
-3. `gh pr checks <PR ID> --watch` で GitHub Actions CI を待ち、その結果がエラーとなっていないこと。成功している場合でも、ログを確認し、誤って成功扱いになっていないこと。もし GitHub Actions が動作しない場合は、ローカルで CI と同等のテストを行い、CI が成功することを保証すること
-4. `request-review-copilot` コマンドが存在する場合、`request-review-copilot https://github.com/$OWNER/$REPO/pull/$PR_NUMBER` で GitHub Copilot へレビューを依頼すること。レビュー依頼は自動で行われる場合もあるし、制約により `request-review-copilot` を実行しても GitHub Copilot がレビューしないケースがある
-5. 10 分以内に投稿される GitHub Copilot レビューへの対応を行うこと。対応したら、レビューコメントそれぞれに対して返信を行うこと。レビュアーに GitHub Copilot がアサインされていない場合はスキップして構わない
-6. `/code-review:code-review` によるコードレビューを実施したこと。コードレビュー内容に対しては、信頼度スコアが 50 以上の指摘事項に対して対応すること
-
-## リポジトリ固有
-
-- ctix (v2 系、`ctix build --mode bundle`) により `src/index.ts` が自動生成される。手動編集は禁止。
-- `src/examples/**` は Index ファイル生成対象外 (`ctix` コマンドに `-p tsconfig.build.json` を指定し、`tsconfig.build.json` の `exclude` 設定で除外)。
-- `tsconfig.build.json` で examples と tests を除外してビルドする。
-- Renovate による自動依存更新が有効。Renovate が作成した既存の PR に対して追加コミットや更新を行わない。
-- 発行前に `npm run lint` が自動実行される (`prepublishOnly` スクリプト)。
-- npm install 後に `npm run build` が自動実行される (`prepare` スクリプト)。
-- リポジトリは `git@github.com:book000/node-utils.git` (upstream) と `git@github.com:akubiusa/node-utils.git` (origin) の 2 つのリモートがある。
+- `src/index.ts` は ctix による自動生成物。手動編集禁止。
+- Renovate による依存自動更新が有効。**Renovate が作成した PR に追加コミット・更新をしない**。
+- `prepublishOnly` で発行前に `lint` が、`prepare` で `install` 後に `build` が自動実行される。
+- ブランチ命名は [Conventional Branch](https://conventional-branch.github.io) の短縮形 (feat, fix, docs など)。コミットは [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) に従い、`<description>` は日本語で記載する。
