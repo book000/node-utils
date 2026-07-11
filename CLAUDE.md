@@ -7,7 +7,7 @@
 `@book000/node-utils` は TypeScript 製の個人向けユーティリティライブラリで、npm パッケージとして公開されます。主な機能:
 
 - **Logger** (`src/logger.ts`): Winston ベースのロガーラッパー。日本タイムゾーン対応、日次ローテーション、NDJSON 対応。
-- **ConfigFramework** (`src/configuration.ts`): JSONC 形式の設定ファイル管理フレームワーク。バリデーション・環境変数対応。
+- **ConfigFramework** (`src/config.ts`): JSONC 形式の設定ファイル管理フレームワーク。バリデーション・環境変数対応。
 - **Discord** (`src/discord.ts`): Discord Bot / Webhook でのメッセージ送信ユーティリティ。埋め込み・ファイル送信・リンクボタン対応。
 
 ## 開発コマンド
@@ -32,7 +32,7 @@ pnpm example    # src/examples/main.ts を実行
 
 ### 主要ディレクトリ
 
-- `src/`: ソースコード (`logger.ts` / `configuration.ts` / `discord.ts` / 自動生成の `index.ts`)
+- `src/`: ソースコード (`logger.ts` / `config.ts` / `discord.ts` / 自動生成の `index.ts`)
 - `src/__tests__/`: テスト (`*.test.ts`)
 - `src/examples/`: 使用例 (ビルド対象外)
 

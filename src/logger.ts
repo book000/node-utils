@@ -211,10 +211,14 @@ export class Logger {
   }
 }
 
+// このモジュールを import した時点で未処理の例外・rejection を自動でログ出力する設計のため、
+// トップレベルでのハンドラ登録が意図的な挙動。opt-in 化すると既存利用側の挙動が変わってしまう。
+// eslint-disable-next-line unicorn/no-top-level-side-effects
 process.on('unhandledRejection', (reason) => {
   const logger = Logger.configure('main')
   logger.error('unhandledRejection', reason as Error)
 })
+// eslint-disable-next-line unicorn/no-top-level-side-effects
 process.on('uncaughtException', (error) => {
   const logger = Logger.configure('main')
   logger.error('uncaughtException', error)

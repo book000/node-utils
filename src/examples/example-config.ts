@@ -1,12 +1,12 @@
 import { ConfigFramework, Logger } from '..'
 
-export interface Configuration {
+export interface Config {
   foo: string
   bar: number
 }
 
-class ExampleConfiguration extends ConfigFramework<Configuration> {
-  protected validates(): Record<string, (config: Configuration) => boolean> {
+class ExampleConfig extends ConfigFramework<Config> {
+  protected validates(): Record<string, (config: Config) => boolean> {
     return {
       // ...Discord.validations, // When using a message transmission to Discord
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -20,9 +20,9 @@ class ExampleConfiguration extends ConfigFramework<Configuration> {
   }
 }
 
-export function exampleConfiguration() {
-  const logger = Logger.configure('exampleConfiguration')
-  const config = new ExampleConfiguration()
+export function exampleConfig() {
+  const logger = Logger.configure('exampleConfig')
+  const config = new ExampleConfig()
   config.load()
   if (!config.validate()) {
     logger.error('Configuration validation failed')
