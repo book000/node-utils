@@ -4,6 +4,7 @@ import { Discord } from '../discord'
 
 // global.fetch をモック化
 const mockFetch = jest.fn()
+// eslint-disable-next-line unicorn/no-global-object-property-assignment -- テストでの fetch モック差し替えのため意図的にグローバルへ代入
 globalThis.fetch = mockFetch
 
 function createMockResponse(status: number, data: unknown): Response {

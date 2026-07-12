@@ -1,5 +1,5 @@
 import { Logger } from '@/logger'
-import { Configuration, exampleConfiguration } from './example-configuration'
+import { Config, exampleConfig } from './example-config'
 import { exampleLogger } from './example-logger'
 import { exampleDiscord } from './example-discord'
 import fs from 'node:fs'
@@ -13,7 +13,7 @@ async function main() {
   exampleLogger()
 
   logger.info('Create dummy configuration file')
-  const config: Configuration = {
+  const config: Config = {
     foo: 'foo',
     bar: 123,
   }
@@ -23,8 +23,8 @@ async function main() {
   logger.info('Set environment variable')
   process.env.CONFIG_PATH = temporaryConfigPath
 
-  logger.info('Calling exampleConfiguration()')
-  exampleConfiguration()
+  logger.info('Calling exampleConfig()')
+  exampleConfig()
 
   logger.info('Remove dummy configuration file')
   fs.unlinkSync(temporaryConfigPath)

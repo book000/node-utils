@@ -1,3 +1,3 @@
-export * from './configuration'
+export * from './config'
 export * from './discord'
 export * from './logger'

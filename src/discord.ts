@@ -144,9 +144,10 @@ export class Discord {
     // webhookUrl と channelId があれば Webhook として動作する
     // どちらもなければエラーを投げる
 
-    if (this.isDiscordBotOptions(options)) {
-      this.options = options
-    } else if (this.isDiscordWebhookOptions(options)) {
+    if (
+      this.isDiscordBotOptions(options) ||
+      this.isDiscordWebhookOptions(options)
+    ) {
       this.options = options
     } else {
       throw new Error('Invalid options')
@@ -235,9 +236,8 @@ export class Discord {
     const urlObject = new URL(this.options.webhookUrl)
     urlObject.searchParams.append('wait', 'true')
 
-    const response = await fetch(urlObject.toString(), {
+    const response = await fetch(urlObject.href, {
       method: 'POST',
-      headers: {},
       body: formData,
     })
     if (response.status !== 200 && response.status !== 204) {
@@ -321,14 +321,10 @@ export class Discord {
     const urlObject = new URL(this.options.webhookUrl)
     urlObject.searchParams.append('wait', 'true')
 
-    const response = await fetch(
-      `${urlObject.toString()}/messages/${messageId}`,
-      {
-        method: 'PATCH',
-        headers: {},
-        body: formData,
-      }
-    )
+    const response = await fetch(`${urlObject.href}/messages/${messageId}`, {
+      method: 'PATCH',
+      body: formData,
+    })
     if (response.status !== 200 && response.status !== 204) {
       const text = await response.text()
       throw new Error(`Discord API returned ${response.status}: ${text}`)

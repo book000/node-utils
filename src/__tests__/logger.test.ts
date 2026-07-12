@@ -26,13 +26,13 @@ jest.mock('winston', () => {
   }
 
   // モックの関数を作成
-  const formatFunc = jest.fn().mockReturnValue('format')
+  const formatFunction = jest.fn().mockReturnValue('format')
   // formatは独自のフォーマッター関数を返す関数
-  formatFunc.mockImplementation(() =>
+  formatFunction.mockImplementation(() =>
     jest.fn().mockReturnValue('custom-format')
   )
 
-  Object.assign(formatFunc, mockFormat)
+  Object.assign(formatFunction, mockFormat)
 
   const mockLogger = {
     debug: jest.fn(),
@@ -44,7 +44,7 @@ jest.mock('winston', () => {
 
   return {
     createLogger: jest.fn(() => mockLogger),
-    format: formatFunc,
+    format: formatFunction,
     transports: {
       Console: jest.fn(),
     },
@@ -56,46 +56,46 @@ jest.mock('winston-daily-rotate-file')
 
 // cycleモジュールをモック化
 jest.mock('cycle', () => ({
-  decycle: jest.fn((obj) => obj),
+  decycle: jest.fn((object) => object),
 }))
 
 // インターフェイス定義を追加
-interface MockMomentObj {
+interface MockMomentObject {
   format: jest.Mock<string>
-  tz: jest.Mock<MockMomentObj>
+  tz: jest.Mock<MockMomentObject>
 }
 
 // moment-timezoneをモック化
 jest.mock('moment-timezone', () => {
   // モックを定義
-  const mockMomentObj: MockMomentObj = {
+  const mockMomentObject: MockMomentObject = {
     format: jest.fn(() => '2025-05-05 12:00:00.000'),
-    tz: jest.fn(() => mockMomentObj),
+    tz: jest.fn(() => mockMomentObject),
   }
 
   // モックの関数を作成
-  const mockMomentFn = jest.fn(() => mockMomentObj)
+  const mockMomentFunction = jest.fn(() => mockMomentObject)
 
   // tzプロパティを追加
-  ;(mockMomentFn as any).tz = {
+  ;(mockMomentFunction as any).tz = {
     zone: jest.fn((timezone: string) =>
       timezone === 'Invalid/Timezone' ? null : true
     ),
   }
 
-  return mockMomentFn
+  return mockMomentFunction
 })
 
 // プロセスイベントハンドラのモック用
 const originalProcessOn = process.on
 
 describe('Logger', () => {
-  const originalEnv = process.env
+  const originalEnvironment = process.env
 
   beforeEach(() => {
     jest.clearAllMocks()
     Logger.closeAll()
-    process.env = { ...originalEnv }
+    process.env = { ...originalEnvironment }
     // 環境変数を初期化
     delete process.env.LOG_LEVEL
     delete process.env.LOG_FILE_LEVEL
@@ -107,7 +107,7 @@ describe('Logger', () => {
   })
 
   afterEach(() => {
-    process.env = originalEnv
+    process.env = originalEnvironment
   })
 
   describe('configure', () => {
@@ -324,8 +324,8 @@ describe('Logger', () => {
     it('should use TZ environment variable when provided and valid', () => {
       process.env.TZ = 'America/New_York'
 
-      const timestampFn = Logger.getTimestamp()
-      timestampFn()
+      const timestampFunction = Logger.getTimestamp()
+      timestampFunction()
 
       expect(moment.tz.zone).toHaveBeenCalledWith('America/New_York')
     })
@@ -333,8 +333,8 @@ describe('Logger', () => {
     it('should use default timezone (Asia/Tokyo) when TZ is not provided', () => {
       delete process.env.TZ
 
-      const timestampFn = Logger.getTimestamp()
-      const result = timestampFn()
+      const timestampFunction = Logger.getTimestamp()
+      const result = timestampFunction()
 
       expect(result).toBe('2025-05-05 12:00:00.000')
     })
@@ -342,8 +342,8 @@ describe('Logger', () => {
     it('should use default timezone (Asia/Tokyo) when TZ is invalid', () => {
       process.env.TZ = 'Invalid/Timezone'
 
-      const timestampFn = Logger.getTimestamp()
-      const result = timestampFn()
+      const timestampFunction = Logger.getTimestamp()
+      const result = timestampFunction()
 
       expect(result).toBe('2025-05-05 12:00:00.000')
     })

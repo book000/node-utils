@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { ConfigFramework } from '../configuration'
+import { ConfigFramework } from '../config'
 import os from 'node:os'
 
 interface TestConfig {
@@ -28,10 +28,15 @@ class TestConfigFramework extends ConfigFramework<TestConfig> {
 }
 
 describe('ConfigFramework', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'config-test-'))
-  const validConfigPath = path.join(tempDir, 'valid-config.json')
-  const invalidConfigPath = path.join(tempDir, 'invalid-config.json')
-  const invalidJsonConfigPath = path.join(tempDir, 'invalid-json-config.json')
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'config-test-')
+  )
+  const validConfigPath = path.join(temporaryDirectory, 'valid-config.json')
+  const invalidConfigPath = path.join(temporaryDirectory, 'invalid-config.json')
+  const invalidJsonConfigPath = path.join(
+    temporaryDirectory,
+    'invalid-json-config.json'
+  )
 
   beforeAll(() => {
     // 有効な設定ファイルを作成
@@ -63,7 +68,7 @@ describe('ConfigFramework', () => {
 
   afterAll(() => {
     // テスト終了後にテンポラリファイルを削除
-    fs.rmSync(tempDir, { recursive: true, force: true })
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true })
   })
 
   describe('constructor', () => {
@@ -134,16 +139,16 @@ describe('ConfigFramework', () => {
     it('should validate a valid config successfully', () => {
       const config = new TestConfigFramework(validConfigPath)
       config.load()
-      const result = config.validate()
-      expect(result).toBeTruthy()
+      const isResult = config.validate()
+      expect(isResult).toBeTruthy()
       expect(config.getValidateFailures()).toHaveLength(0)
     })
 
     it('should fail validation for an invalid config', () => {
       const config = new TestConfigFramework(invalidConfigPath)
       config.load()
-      const result = config.validate()
-      expect(result).toBeFalsy()
+      const isResult = config.validate()
+      expect(isResult).toBeFalsy()
 
       const failures = config.getValidateFailures()
       expect(failures).toContain('flag is boolean')
