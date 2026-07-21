@@ -1,3 +1,5 @@
 export * from './config'
 export * from './discord'
+export * from './error-reporter'
 export * from './logger'
+export * from './sentry-transport'

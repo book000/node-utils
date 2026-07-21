@@ -2,6 +2,9 @@ import winston, { format } from 'winston'
 import WinstonDailyRotateFile from 'winston-daily-rotate-file'
 import cycle from 'cycle'
 import moment from 'moment-timezone'
+import * as Sentry from '@sentry/node'
+import { SentryTransport } from './sentry-transport'
+import { resetSentryInitialized } from './sentry/sentry-client'
 
 /**
  * ロガーラッパークラス
@@ -174,15 +177,24 @@ export class Logger {
       auditFile: `${logDirectory}/audit.json`,
     })
 
-    const logger = winston.createLogger({
-      transports: [
-        new winston.transports.Console({
-          level: logLevel,
-          format: consoleFormat,
-        }),
-        transportRotateFile,
-      ],
-    })
+    const transports: winston.transport[] = [
+      new winston.transports.Console({
+        level: logLevel,
+        format: consoleFormat,
+      }),
+      transportRotateFile,
+    ]
+    if (process.env.SENTRY_DSN) {
+      transports.push(
+        new SentryTransport({
+          level: process.env.SENTRY_LOG_LEVEL ?? 'warn',
+          dsn: process.env.SENTRY_DSN,
+          environment: process.env.SENTRY_ENVIRONMENT,
+        })
+      )
+    }
+
+    const logger = winston.createLogger({ transports })
     const instance = new Logger(logger)
     this.cache.set(category, instance)
     return instance
@@ -195,13 +207,23 @@ export class Logger {
    * close() してからキャッシュを破棄するため、次回の configure() 呼び出しでは
    * category ごとに新規インスタンスが生成し直される。プロセス終了処理や、テスト間で
    * ロガーの状態をリセットしたい場合など、キャッシュ済みロガーのファイルディスクリプタを
-   * まとめて解放したいときに使用する。
+   * まとめて解放したいときに使用する。SENTRY_DSN 設定時は Sentry.close() も呼び出し、
+   * 未送信のイベントをプロセス終了前に送信し切る。呼び出し後も Logger.configure() で
+   * 再度ロガー (および Sentry) を初期化して使い続けられる。
    */
   public static closeAll(): void {
     for (const instance of this.cache.values()) {
       instance.logger.close()
     }
     this.cache.clear()
+    if (process.env.SENTRY_DSN) {
+      Sentry.close(2000).catch((error: unknown) => {
+        // close 失敗を握りつぶすと GlitchTip 側の障害に気づけなくなるため、
+        // プロセス終了処理中の最後の手段として console.error で可視化する
+        console.error('Failed to close Sentry client', error)
+      })
+      resetSentryInitialized()
+    }
   }
 
   static getTimestamp(): () => string {
