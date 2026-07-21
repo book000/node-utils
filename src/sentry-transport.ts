@@ -35,8 +35,7 @@ export class SentryTransport extends TransportStream {
     setImmediate(() => this.emit('logged', info))
 
     const { level, message, ...rest } = info
-    const messageText =
-      typeof message === 'string' ? message : String(message)
+    const messageText = typeof message === 'string' ? message : String(message)
     if (level === 'error' && typeof rest.stack === 'string') {
       Sentry.captureException(this.toError(messageText, rest.stack))
     } else if (level === 'error' || level === 'warn') {
