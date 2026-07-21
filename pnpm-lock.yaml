@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@apm-js-collab/code-transformer-bundler-plugins@0.7.1': 5f4e2c5db791bb10e6c08a5b9087214dc5e0de7a56031cd530d23fe7305e78b8
+
 importers:
 
   .:
@@ -3447,7 +3450,7 @@ packages:
 
 snapshots:
 
-  '@apm-js-collab/code-transformer-bundler-plugins@0.7.1':
+  '@apm-js-collab/code-transformer-bundler-plugins@0.7.1(patch_hash=5f4e2c5db791bb10e6c08a5b9087214dc5e0de7a56031cd530d23fe7305e78b8)':
     dependencies:
       '@apm-js-collab/code-transformer': 0.18.0
       es-module-lexer: 2.3.1
@@ -4154,7 +4157,7 @@ snapshots:
 
   '@sentry/server-utils@10.67.0':
     dependencies:
-      '@apm-js-collab/code-transformer-bundler-plugins': 0.7.1
+      '@apm-js-collab/code-transformer-bundler-plugins': 0.7.1(patch_hash=5f4e2c5db791bb10e6c08a5b9087214dc5e0de7a56031cd530d23fe7305e78b8)
       '@apm-js-collab/tracing-hooks': 0.13.0
       '@sentry/conventions': 0.16.0
       '@sentry/core': 10.67.0
