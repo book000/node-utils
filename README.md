@@ -75,6 +75,34 @@ function main() {
 main()
 ```
 
+### Sentry (GlitchTip) integration for error reporting
+
+`Logger` automatically forwards `error`/`warn` logs (and the existing `unhandledRejection` / `uncaughtException` process hooks) to a Sentry-compatible endpoint (e.g. self-hosted [GlitchTip](https://glitchtip.com/)) when the `SENTRY_DSN` environment variable is set. No code changes are required on the consuming side beyond upgrading `@book000/node-utils` and setting the environment variable.
+
+```typescript
+import { Logger } from '@book000/node-utils'
+
+// SENTRY_DSN が設定されていれば、以下の error() 呼び出しは自動的に GlitchTip へ転送される
+const logger = Logger.configure('main')
+logger.error('Something went wrong', new Error('boom'))
+```
+
+| Environment variable | Required | Default | Description |
+|---|---|---|---|
+| `SENTRY_DSN` | No (opt-in) | none | When unset, `SentryTransport` / `ErrorReporter` are fully no-op |
+| `SENTRY_ENVIRONMENT` | No | `process.env.NODE_ENV ?? 'production'` | Sentry `environment` tag |
+| `SENTRY_LOG_LEVEL` | No | `warn` | Minimum Winston log level forwarded by `SentryTransport` |
+| `SENTRY_RELEASE` | No | auto-detected `<name>@<version>` from the consuming app's `package.json` | Overrides the auto-detected `release` tag |
+
+For explicit, opt-in error reporting outside of `Logger` (e.g. attaching custom tags), use `ErrorReporter`:
+
+```typescript
+import { ErrorReporter } from '@book000/node-utils'
+
+ErrorReporter.configure()
+ErrorReporter.captureException(new Error('boom'), { userId: '123' })
+```
+
 ### Send message to Discord
 
 You can send messages to the Discord using the Discord Bot or the Discord Webhook.
