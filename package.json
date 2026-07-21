@@ -37,12 +37,13 @@
     "test": "jest --runInBand --passWithNoTests --detectOpenHandles --forceExit --coverage"
   },
   "dependencies": {
+    "@sentry/node": "10.67.0",
     "cycle": "1.0.3",
-    
     "jsonc-parser": "3.3.1",
     "moment-timezone": "0.6.2",
     "winston": "3.19.0",
-    "winston-daily-rotate-file": "5.0.0"
+    "winston-daily-rotate-file": "5.0.0",
+    "winston-transport": "4.9.0"
   },
   "devDependencies": {
     "@book000/eslint-config": "1.16.11",
