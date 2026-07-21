@@ -67,6 +67,16 @@ describe('sentry-client', () => {
       expect(mockSentryInit).toHaveBeenCalledTimes(1)
     })
 
+    it('should call Sentry.init again after resetSentryInitialized', () => {
+      const fresh = freshSentryClient()
+
+      fresh.ensureSentryInitialized({ dsn: 'https://example.com/1' })
+      fresh.resetSentryInitialized()
+      fresh.ensureSentryInitialized({ dsn: 'https://example.com/2' })
+
+      expect(mockSentryInit).toHaveBeenCalledTimes(2)
+    })
+
     it('should filter out OnUncaughtException and OnUnhandledRejection integrations', () => {
       const fresh = freshSentryClient()
 
@@ -143,6 +153,15 @@ describe('sentry-client', () => {
       fresh.ensureSentryInitialized({ dsn: 'https://example.com/1' })
 
       expect(fresh.isSentryInitialized()).toBe(true)
+    })
+
+    it('should return false after resetSentryInitialized is called', () => {
+      const fresh = freshSentryClient()
+
+      fresh.ensureSentryInitialized({ dsn: 'https://example.com/1' })
+      fresh.resetSentryInitialized()
+
+      expect(fresh.isSentryInitialized()).toBe(false)
     })
   })
 

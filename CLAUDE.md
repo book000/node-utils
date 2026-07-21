@@ -9,6 +9,7 @@
 - **Logger** (`src/logger.ts`): Winston ベースのロガーラッパー。日本タイムゾーン対応、日次ローテーション、NDJSON 対応。
 - **ConfigFramework** (`src/config.ts`): JSONC 形式の設定ファイル管理フレームワーク。バリデーション・環境変数対応。
 - **Discord** (`src/discord.ts`): Discord Bot / Webhook でのメッセージ送信ユーティリティ。埋め込み・ファイル送信・リンクボタン対応。
+- **Sentry (GlitchTip) 連携** (`src/sentry-transport.ts` / `src/error-reporter.ts`): エラーレポーティング機能。`SentryTransport` は `SENTRY_DSN` 設定時に `Logger.configure()` へ自動追加される Winston トランスポート、`ErrorReporter` は明示的なオプトインで利用する静的ラッパー API。
 
 ## 開発コマンド
 
@@ -32,7 +33,8 @@ pnpm example    # src/examples/main.ts を実行
 
 ### 主要ディレクトリ
 
-- `src/`: ソースコード (`logger.ts` / `config.ts` / `discord.ts` / 自動生成の `index.ts`)
+- `src/`: ソースコード (`logger.ts` / `config.ts` / `discord.ts` / `sentry-transport.ts` / `error-reporter.ts` / 自動生成の `index.ts`)
+- `src/sentry/`: Sentry 連携の内部専用ヘルパー (`sentry-client.ts` / `sentry-release.ts`)。ctix の `@ctix-exclude` マーカーにより `index.ts` の公開対象から除外される。
 - `src/__tests__/`: テスト (`*.test.ts`)
 - `src/examples/`: 使用例 (ビルド対象外)
 

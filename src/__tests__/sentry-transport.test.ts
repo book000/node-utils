@@ -44,6 +44,36 @@ describe('SentryTransport', () => {
     )
   })
 
+  it('should preserve the original error name parsed from the stack', (done) => {
+    transport.log(
+      {
+        level: 'error',
+        message: 'boom',
+        stack: 'TypeError: boom\n  at x',
+      },
+      () => {
+        expect(Sentry.captureException).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'TypeError' })
+        )
+        done()
+      }
+    )
+  })
+
+  it('should emit an "error" event when Sentry.flush rejects', async () => {
+    ;(Sentry.flush as jest.Mock).mockRejectedValueOnce(new Error('network'))
+    const onError = jest.fn()
+    transport.on('error', onError)
+    const callback = jest.fn()
+
+    transport.log({ level: 'error', message: 'boom' }, callback)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(onError).toHaveBeenCalledWith(expect.any(Error))
+    expect(callback).toHaveBeenCalled()
+  })
+
   it('should call captureMessage with "error" severity when level is error and no stack', (done) => {
     transport.log({ level: 'error', message: 'boom' }, () => {
       expect(Sentry.captureMessage).toHaveBeenCalledWith('boom', 'error')

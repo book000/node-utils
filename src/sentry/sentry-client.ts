@@ -63,3 +63,13 @@ export function toSeverityLevel(level: string): Sentry.SeverityLevel {
 export function isSentryInitialized(): boolean {
   return initialized
 }
+
+/**
+ * 初期化済みフラグをリセットする
+ *
+ * Logger.closeAll() で Sentry.close() した後、次の Logger.configure() で
+ * 再度 Sentry.init() できるようにするために呼び出す
+ */
+export function resetSentryInitialized(): void {
+  initialized = false
+}

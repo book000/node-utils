@@ -5,6 +5,9 @@ import {
   toSeverityLevel,
 } from './sentry/sentry-client'
 
+/**
+ * SentryTransport の初期化オプション
+ */
 export interface SentryTransportOptions
   extends TransportStream.TransportStreamOptions {
   dsn: string
@@ -25,9 +28,6 @@ export class SentryTransport extends TransportStream {
   /**
    * winston から渡されたログ情報を Sentry へ転送する
    *
-   * level が 'error' で stack が付いている場合は captureException、それ以外の error/warn は
-   * captureMessage で送信する。error レベルのみ Sentry.flush() を待ち合わせてからコールバックする
-   *
    * @param info winston が渡すログ情報
    * @param callback 転送処理完了後に呼び出すコールバック
    */
@@ -35,16 +35,22 @@ export class SentryTransport extends TransportStream {
     setImmediate(() => this.emit('logged', info))
 
     const { level, message, ...rest } = info
+    const messageText =
+      typeof message === 'string' ? message : String(message)
     if (level === 'error' && typeof rest.stack === 'string') {
-      Sentry.captureException(this.toError(message as string, rest.stack))
+      Sentry.captureException(this.toError(messageText, rest.stack))
     } else if (level === 'error' || level === 'warn') {
-      Sentry.captureMessage(message as string, toSeverityLevel(level))
+      Sentry.captureMessage(messageText, toSeverityLevel(level))
     }
 
     if (level === 'error') {
       // 短命なバッチ系プロセスがこの直後に終了しても送信が完了するよう待ち合わせる
       Sentry.flush(2000)
-        .catch(() => undefined)
+        .catch((error: unknown) => {
+          // flush 失敗を握りつぶすと GlitchTip 側の障害に気づけなくなるため、
+          // winston の 'error' イベントとして通知する (transport 自体は例外を投げない)
+          this.emit('error', error)
+        })
         .finally(() => {
           callback()
         })
@@ -56,7 +62,14 @@ export class SentryTransport extends TransportStream {
   private toError(message: string, stack: string): Error {
     const error = new Error(message)
     // unicorn/no-error-property-assignment はビルトイン Error への直接代入を禁止するため、
-    // winston から受け取った stack 文字列を Sentry へそのまま渡すには defineProperty を使う
+    // winston から受け取った stack 文字列・エラー名を Sentry へそのまま渡すには defineProperty を使う
+    const firstLine = stack.split('\n', 1)[0]
+    const name = firstLine.includes(': ')
+      ? firstLine.slice(0, firstLine.indexOf(': '))
+      : undefined
+    if (name) {
+      Object.defineProperty(error, 'name', { value: name, configurable: true })
+    }
     Object.defineProperty(error, 'stack', { value: stack, configurable: true })
     return error
   }
