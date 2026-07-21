@@ -1,3 +1,9 @@
+/**
+ * ctix による src/index.ts 自動生成の対象から除外する
+ * (sentry-client.ts からのみ import される内部モジュールのため)
+ *
+ * @ctix-exclude
+ */
 import fs from 'node:fs'
 import path from 'node:path'
 

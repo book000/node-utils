@@ -1,3 +1,9 @@
+/**
+ * ctix による src/index.ts 自動生成の対象から除外する
+ * (sentry-transport.ts / error-reporter.ts からのみ import される内部モジュールのため)
+ *
+ * @ctix-exclude
+ */
 import * as Sentry from '@sentry/node'
 import { detectAppRelease } from './sentry-release'
 
