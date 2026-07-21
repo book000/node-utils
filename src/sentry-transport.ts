@@ -38,15 +38,16 @@ export class SentryTransport extends TransportStream {
     if (level === 'error' && typeof rest.stack === 'string') {
       Sentry.captureException(this.toError(message as string, rest.stack))
     } else if (level === 'error' || level === 'warn') {
-      Sentry.captureMessage(
-        message as string,
-        toSeverityLevel(level as string)
-      )
+      Sentry.captureMessage(message as string, toSeverityLevel(level))
     }
 
     if (level === 'error') {
       // 短命なバッチ系プロセスがこの直後に終了しても送信が完了するよう待ち合わせる
-      void Sentry.flush(2000).finally(() => callback())
+      Sentry.flush(2000)
+        .catch(() => undefined)
+        .finally(() => {
+          callback()
+        })
       return
     }
     callback()
@@ -54,7 +55,9 @@ export class SentryTransport extends TransportStream {
 
   private toError(message: string, stack: string): Error {
     const error = new Error(message)
-    error.stack = stack
+    // unicorn/no-error-property-assignment はビルトイン Error への直接代入を禁止するため、
+    // winston から受け取った stack 文字列を Sentry へそのまま渡すには defineProperty を使う
+    Object.defineProperty(error, 'stack', { value: stack, configurable: true })
     return error
   }
 }

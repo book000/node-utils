@@ -50,7 +50,7 @@ describe('ErrorReporter', () => {
 
   describe('captureException', () => {
     it('should not call Sentry.captureException when not initialized', () => {
-      (isSentryInitialized as jest.Mock).mockReturnValue(false)
+      ;(isSentryInitialized as jest.Mock).mockReturnValue(false)
 
       ErrorReporter.captureException(new Error('boom'))
 
@@ -58,7 +58,7 @@ describe('ErrorReporter', () => {
     })
 
     it('should call Sentry.captureException with context when initialized', () => {
-      (isSentryInitialized as jest.Mock).mockReturnValue(true)
+      ;(isSentryInitialized as jest.Mock).mockReturnValue(true)
       const error = new Error('boom')
       const context = { userId: '123' }
 

@@ -215,7 +215,7 @@ export class Logger {
     }
     this.cache.clear()
     if (process.env.SENTRY_DSN) {
-      void Sentry.close(2000)
+      Sentry.close(2000).catch(() => undefined)
     }
   }
 

@@ -5,7 +5,7 @@ import { detectAppRelease } from '../sentry/sentry-release'
 jest.mock('node:fs')
 
 describe('detectAppRelease', () => {
-  const originalCwd = process.cwd
+  const originalCwd = process.cwd.bind(process)
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -17,7 +17,7 @@ describe('detectAppRelease', () => {
   })
 
   it('should return undefined when package.json does not exist', () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(false)
+    ;(fs.existsSync as jest.Mock).mockReturnValue(false)
 
     const result = detectAppRelease()
 
@@ -28,7 +28,7 @@ describe('detectAppRelease', () => {
   })
 
   it('should return undefined when version field is missing', () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(true)
+    ;(fs.existsSync as jest.Mock).mockReturnValue(true)
     ;(fs.readFileSync as jest.Mock).mockReturnValue(
       JSON.stringify({ name: 'my-app' })
     )
@@ -39,7 +39,7 @@ describe('detectAppRelease', () => {
   })
 
   it('should return undefined when package.json parsing fails', () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(true)
+    ;(fs.existsSync as jest.Mock).mockReturnValue(true)
     ;(fs.readFileSync as jest.Mock).mockReturnValue('{ invalid json')
 
     const result = detectAppRelease()
@@ -48,7 +48,7 @@ describe('detectAppRelease', () => {
   })
 
   it('should return "<name>@<version>" when both fields are present', () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(true)
+    ;(fs.existsSync as jest.Mock).mockReturnValue(true)
     ;(fs.readFileSync as jest.Mock).mockReturnValue(
       JSON.stringify({ name: 'my-app', version: '1.2.3' })
     )
@@ -59,7 +59,7 @@ describe('detectAppRelease', () => {
   })
 
   it('should return only the version when name field is missing', () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(true)
+    ;(fs.existsSync as jest.Mock).mockReturnValue(true)
     ;(fs.readFileSync as jest.Mock).mockReturnValue(
       JSON.stringify({ version: '1.2.3' })
     )

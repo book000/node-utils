@@ -1,3 +1,5 @@
+import type * as SentryClientModule from '../sentry/sentry-client'
+
 // jest.resetModules() は '@sentry/node' の mock factory も再実行するため、
 // factory 内で毎回 jest.fn() を new すると、require し直した sentry-client が
 // 実際に呼ぶインスタンスとテスト側で参照するインスタンスが食い違ってしまう。
@@ -12,6 +14,17 @@ jest.mock('@sentry/node', () => ({
 jest.mock('../sentry/sentry-release', () => ({
   detectAppRelease: jest.fn().mockReturnValue('detected-app@1.0.0'),
 }))
+
+/**
+ * jest.resetModules() 後に sentry-client を再 require し、モジュールスコープの
+ * initialized フラグがリセットされた状態のモジュールを取得する
+ *
+ * @returns 再 require した sentry-client モジュール
+ */
+function freshSentryClient(): typeof SentryClientModule {
+  // eslint-disable-next-line unicorn/prefer-module, @typescript-eslint/no-require-imports
+  return require('../sentry/sentry-client') as typeof SentryClientModule
+}
 
 describe('sentry-client', () => {
   const originalEnvironment = process.env
@@ -30,8 +43,7 @@ describe('sentry-client', () => {
 
   describe('ensureSentryInitialized', () => {
     it('should call Sentry.init with the given dsn and environment', () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fresh = require('../sentry/sentry-client')
+      const fresh = freshSentryClient()
 
       fresh.ensureSentryInitialized({
         dsn: 'https://example.com/1',
@@ -47,8 +59,7 @@ describe('sentry-client', () => {
     })
 
     it('should call Sentry.init only once across multiple invocations', () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fresh = require('../sentry/sentry-client')
+      const fresh = freshSentryClient()
 
       fresh.ensureSentryInitialized({ dsn: 'https://example.com/1' })
       fresh.ensureSentryInitialized({ dsn: 'https://example.com/2' })
@@ -57,12 +68,16 @@ describe('sentry-client', () => {
     })
 
     it('should filter out OnUncaughtException and OnUnhandledRejection integrations', () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fresh = require('../sentry/sentry-client')
+      const fresh = freshSentryClient()
 
       fresh.ensureSentryInitialized({ dsn: 'https://example.com/1' })
 
-      const initOptions = (mockSentryInit as jest.Mock).mock.calls[0][0]
+      const calls = mockSentryInit.mock.calls as unknown as [
+        {
+          integrations: (integrations: { name: string }[]) => { name: string }[]
+        },
+      ][]
+      const initOptions = calls[0][0]
       const filtered = initOptions.integrations([
         { name: 'OnUncaughtException' },
         { name: 'OnUnhandledRejection' },
@@ -74,8 +89,7 @@ describe('sentry-client', () => {
 
     it('should prefer SENTRY_RELEASE env var over detectAppRelease', () => {
       process.env.SENTRY_RELEASE = 'env-app@2.0.0'
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fresh = require('../sentry/sentry-client')
+      const fresh = freshSentryClient()
 
       fresh.ensureSentryInitialized({ dsn: 'https://example.com/1' })
 
@@ -85,8 +99,7 @@ describe('sentry-client', () => {
     })
 
     it('should fall back to detectAppRelease when SENTRY_RELEASE is unset', () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fresh = require('../sentry/sentry-client')
+      const fresh = freshSentryClient()
 
       fresh.ensureSentryInitialized({ dsn: 'https://example.com/1' })
 
@@ -97,8 +110,7 @@ describe('sentry-client', () => {
 
     it('should default environment to NODE_ENV when not provided', () => {
       process.env.NODE_ENV = 'test-environment'
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fresh = require('../sentry/sentry-client')
+      const fresh = freshSentryClient()
 
       fresh.ensureSentryInitialized({ dsn: 'https://example.com/1' })
 
@@ -108,8 +120,7 @@ describe('sentry-client', () => {
     })
 
     it('should default environment to production when NODE_ENV is unset', () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fresh = require('../sentry/sentry-client')
+      const fresh = freshSentryClient()
 
       fresh.ensureSentryInitialized({ dsn: 'https://example.com/1' })
 
@@ -121,15 +132,13 @@ describe('sentry-client', () => {
 
   describe('isSentryInitialized', () => {
     it('should return false before ensureSentryInitialized is called', () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fresh = require('../sentry/sentry-client')
+      const fresh = freshSentryClient()
 
       expect(fresh.isSentryInitialized()).toBe(false)
     })
 
     it('should return true after ensureSentryInitialized is called', () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fresh = require('../sentry/sentry-client')
+      const fresh = freshSentryClient()
 
       fresh.ensureSentryInitialized({ dsn: 'https://example.com/1' })
 
@@ -139,8 +148,7 @@ describe('sentry-client', () => {
 
   describe('toSeverityLevel', () => {
     it('should map "warn" to "warning"', () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fresh = require('../sentry/sentry-client')
+      const fresh = freshSentryClient()
 
       expect(fresh.toSeverityLevel('warn')).toBe('warning')
     })
@@ -148,8 +156,7 @@ describe('sentry-client', () => {
     it.each(['fatal', 'error', 'log', 'info', 'debug'])(
       'should pass "%s" through unchanged',
       (level) => {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const fresh = require('../sentry/sentry-client')
+        const fresh = freshSentryClient()
 
         expect(fresh.toSeverityLevel(level)).toBe(level)
       }
