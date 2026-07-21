@@ -12,6 +12,8 @@ import { Logger } from '../logger'
 import winston from 'winston'
 import WinstonDailyRotateFile from 'winston-daily-rotate-file'
 import moment from 'moment-timezone'
+import * as Sentry from '@sentry/node'
+import { SentryTransport } from '../sentry-transport'
 
 // Winstonをモック化
 jest.mock('winston', () => {
@@ -53,6 +55,18 @@ jest.mock('winston', () => {
 
 // Winston日次ローテートファイルをモック化
 jest.mock('winston-daily-rotate-file')
+
+// SentryTransportをモック化 (実際のSentry.init()を走らせないため)
+jest.mock('../sentry-transport', () => ({
+  SentryTransport: jest.fn().mockImplementation(() => ({
+    log: jest.fn(),
+  })),
+}))
+
+// @sentry/nodeをモック化 (closeAll()のSentry.close()呼び出し検証用)
+jest.mock('@sentry/node', () => ({
+  close: jest.fn().mockResolvedValue(true),
+}))
 
 // cycleモジュールをモック化
 jest.mock('cycle', () => ({
@@ -104,6 +118,8 @@ describe('Logger', () => {
     delete process.env.LOG_FILE_MAX_AGE
     delete process.env.LOG_FILE_FORMAT
     delete process.env.TZ
+    delete process.env.SENTRY_DSN
+    delete process.env.SENTRY_LOG_LEVEL
   })
 
   afterEach(() => {
@@ -318,6 +334,38 @@ describe('Logger', () => {
       const objectStackResult = printfCallback(objectStackInfo)
       expect(objectStackResult).toContain('{"trace":"stack trace"}')
     })
+
+    it('should not add SentryTransport when SENTRY_DSN is unset', () => {
+      delete process.env.SENTRY_DSN
+
+      Logger.configure('test')
+
+      expect(SentryTransport).not.toHaveBeenCalled()
+    })
+
+    it('should add SentryTransport when SENTRY_DSN is set', () => {
+      process.env.SENTRY_DSN = 'https://example.com/1'
+
+      Logger.configure('test')
+
+      expect(SentryTransport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dsn: 'https://example.com/1',
+          level: 'warn',
+        })
+      )
+    })
+
+    it('should use SENTRY_LOG_LEVEL for the SentryTransport level when provided', () => {
+      process.env.SENTRY_DSN = 'https://example.com/1'
+      process.env.SENTRY_LOG_LEVEL = 'error'
+
+      Logger.configure('test')
+
+      expect(SentryTransport).toHaveBeenCalledWith(
+        expect.objectContaining({ level: 'error' })
+      )
+    })
   })
 
   describe('getTimestamp', () => {
@@ -427,6 +475,29 @@ describe('Logger', () => {
         'Error message',
         error
       )
+    })
+  })
+
+  describe('closeAll with Sentry', () => {
+    beforeEach(() => {
+      delete process.env.SENTRY_DSN
+    })
+
+    it('should not call Sentry.close when SENTRY_DSN is unset', () => {
+      Logger.configure('sentry-close-test')
+
+      Logger.closeAll()
+
+      expect(Sentry.close).not.toHaveBeenCalled()
+    })
+
+    it('should call Sentry.close(2000) when SENTRY_DSN is set', () => {
+      process.env.SENTRY_DSN = 'https://example.com/1'
+      Logger.configure('sentry-close-test')
+
+      Logger.closeAll()
+
+      expect(Sentry.close).toHaveBeenCalledWith(2000)
     })
   })
 
