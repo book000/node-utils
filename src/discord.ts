@@ -302,12 +302,13 @@ export class Discord {
         body: formData,
       }
     )
-    if (response.status !== 200) {
-      const data = await response.json()
-      throw new Error(
-        `Discord API returned ${response.status}: ${JSON.stringify(data)}`
-      )
+    if (response.status === 200) {
+      return
     }
+    const data = await response.json()
+    throw new Error(
+      `Discord API returned ${response.status}: ${JSON.stringify(data)}`
+    )
   }
 
   private async editWebhook(
@@ -325,10 +326,11 @@ export class Discord {
       method: 'PATCH',
       body: formData,
     })
-    if (response.status !== 200 && response.status !== 204) {
-      const text = await response.text()
-      throw new Error(`Discord API returned ${response.status}: ${text}`)
+    if (response.status === 200 || response.status === 204) {
+      return
     }
+    const text = await response.text()
+    throw new Error(`Discord API returned ${response.status}: ${text}`)
   }
 
   private isDiscordBotOptions(
