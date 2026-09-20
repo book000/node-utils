@@ -105,15 +105,14 @@ export class Logger {
 
     const textFormat = format.printf((info) => {
       const { timestamp, level, message, ...rest } = info
-      // eslint-disable-next-line unicorn/no-array-reduce
+
       const filteredRest = Object.keys(rest).reduce((accumulator, key) => {
-        if (key === 'stack') {
-          return accumulator
-        }
-        return {
-          ...accumulator,
-          [key]: rest[key],
-        }
+        return key === 'stack'
+          ? accumulator
+          : {
+              ...accumulator,
+              [key]: rest[key],
+            }
       }, {})
       const standardLine = [
         '[',
@@ -183,16 +182,16 @@ export class Logger {
         format: consoleFormat,
       }),
       transportRotateFile,
+      ...(process.env.SENTRY_DSN
+        ? [
+            new SentryTransport({
+              level: process.env.SENTRY_LOG_LEVEL ?? 'warn',
+              dsn: process.env.SENTRY_DSN,
+              environment: process.env.SENTRY_ENVIRONMENT,
+            }),
+          ]
+        : []),
     ]
-    if (process.env.SENTRY_DSN) {
-      transports.push(
-        new SentryTransport({
-          level: process.env.SENTRY_LOG_LEVEL ?? 'warn',
-          dsn: process.env.SENTRY_DSN,
-          environment: process.env.SENTRY_ENVIRONMENT,
-        })
-      )
-    }
 
     const logger = winston.createLogger({ transports })
     const instance = new Logger(logger)
@@ -216,14 +215,16 @@ export class Logger {
       instance.logger.close()
     }
     this.cache.clear()
-    if (process.env.SENTRY_DSN) {
-      Sentry.close(2000).catch((error: unknown) => {
-        // close 失敗を握りつぶすと GlitchTip 側の障害に気づけなくなるため、
-        // プロセス終了処理中の最後の手段として console.error で可視化する
-        console.error('Failed to close Sentry client', error)
-      })
-      resetSentryInitialized()
+    if (!process.env.SENTRY_DSN) {
+      return
     }
+
+    Sentry.close(2000).catch((error: unknown) => {
+      // close 失敗を握りつぶすと GlitchTip 側の障害に気づけなくなるため、
+      // プロセス終了処理中の最後の手段として console.error で可視化する
+      console.error('Failed to close Sentry client', error)
+    })
+    resetSentryInitialized()
   }
 
   static getTimestamp(): () => string {
