@@ -19,7 +19,7 @@ class TestConfigFramework extends ConfigFramework<TestConfig> {
       'value is number': (config) => typeof config.value === 'number',
       'flag is boolean': (config) => typeof config.flag === 'boolean',
       'nested.key is string': (config) => {
-        return config.nested ? typeof config.nested.key === 'string' : true
+        return !config.nested || typeof config.nested.key === 'string'
       },
       'value is greater than zero': (config) => config.value > 0,
     }
