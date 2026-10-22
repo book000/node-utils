@@ -129,15 +129,33 @@ export const DiscordMessageFlag = {
 const SEND_ALLOWED_FLAGS =
   DiscordMessageFlag.SuppressEmbeds | DiscordMessageFlag.SuppressNotifications
 
-/** メッセージ編集 (Edit Message / Edit Webhook Message) で指定できる flags */
-const EDIT_ALLOWED_FLAGS = DiscordMessageFlag.SuppressEmbeds
+/**
+ * メッセージ編集 (Edit Message / Edit Webhook Message) で変更できる flags
+ *
+ * Discord API の仕様上、編集で設定・解除できるのは `SuppressEmbeds` のみ。
+ */
+const EDIT_CHANGEABLE_FLAGS = DiscordMessageFlag.SuppressEmbeds
+
+/**
+ * メッセージ編集で指定できる flags
+ *
+ * Discord API は flags を編集する際に、既存の flag も含めて指定することを求めている。
+ * そのため、変更できる flag (`EDIT_CHANGEABLE_FLAGS`) に加えて、変更はできないが
+ * 保持のために指定が必要な flag (`SuppressNotifications` など、送信時に指定できる flag) も受理する。
+ * 変更できない flag は Discord 側で無視される。
+ */
+const EDIT_ALLOWED_FLAGS = EDIT_CHANGEABLE_FLAGS | SEND_ALLOWED_FLAGS
 
 /**
  * メッセージ flags。他のメッセージ種別と組み合わせて指定できる。
  *
  * - 送信時は `SuppressEmbeds` と `SuppressNotifications` を指定できる
- * - 編集時は `SuppressEmbeds` のみ指定できる (Discord API の仕様)。
- *   それ以外を含む場合は Error を投げる
+ * - 編集時に設定・解除できるのは `SuppressEmbeds` のみ (Discord API の仕様)。
+ *   flags を編集する際は既存の flag も含めて指定する必要があるため、
+ *   `SuppressNotifications` 付きで送信したメッセージに `SuppressEmbeds` を追加する場合は
+ *   両方を指定する (`SuppressEmbeds | SuppressNotifications`)。
+ *   `SuppressNotifications` 自体は編集で変更できず、Discord 側で無視される
+ * - 上記以外の flag を含む場合は Error を投げる
  */
 interface DiscordMessageFlags {
   flags: number
@@ -355,10 +373,11 @@ export class Discord {
       throw new Error('Invalid webhook options')
     }
 
+    // クエリ文字列 (thread_id など) を保持したまま pathname に /messages/<id> を追加する
     const urlObject = new URL(this.options.webhookUrl)
-    urlObject.searchParams.append('wait', 'true')
+    urlObject.pathname = `${urlObject.pathname.replace(/\/$/, '')}/messages/${messageId}`
 
-    const response = await fetch(`${urlObject.href}/messages/${messageId}`, {
+    const response = await fetch(urlObject.href, {
       method: 'PATCH',
       body: formData,
     })

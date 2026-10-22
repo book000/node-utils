@@ -147,7 +147,8 @@ main()
 ```
 
 `flags` can be combined with `content`, `embeds`, `components` and `file`.
-`sendMessage()` accepts `SuppressEmbeds` and `SuppressNotifications`, while `editMessage()` accepts only `SuppressEmbeds` (Discord API restriction). Unsupported flags throw an error.
+`sendMessage()` accepts `SuppressEmbeds` and `SuppressNotifications`.
+When editing, only `SuppressEmbeds` can be set or unset (Discord API restriction), but `editMessage()` also accepts `SuppressNotifications` so that you can pass all of the message's existing flags, as Discord requires (e.g. `SuppressEmbeds | SuppressNotifications` to add `SuppressEmbeds` to a message sent with `SuppressNotifications`). Other flags throw an error.
 
 ## 📑 License
 

@@ -481,7 +481,43 @@ describe('Discord', () => {
       expect(getPayloadJson()).toEqual({ content: 'Updated message' })
     })
 
-    it('should throw when SuppressNotifications is used on edit', async () => {
+    it('should keep existing flags when adding SuppressEmbeds on edit', async () => {
+      const discord = new Discord({
+        token: 'test-token',
+        channelId: 'test-channel',
+      })
+
+      // SuppressNotifications 付きで送信したメッセージに SuppressEmbeds を追加する
+      await discord.editMessage('message-id', {
+        content: 'Updated message',
+        flags:
+          DiscordMessageFlag.SuppressEmbeds |
+          DiscordMessageFlag.SuppressNotifications,
+      })
+
+      expect(getPayloadJson()).toEqual({
+        content: 'Updated message',
+        flags: 4100,
+      })
+    })
+
+    it('should keep SuppressNotifications only when editing via webhook', async () => {
+      const discord = new Discord({
+        webhookUrl: 'https://discord.com/api/webhooks/123/abc',
+      })
+
+      await discord.editMessage('message-id', {
+        content: 'Updated message',
+        flags: DiscordMessageFlag.SuppressNotifications,
+      })
+
+      expect(getPayloadJson()).toEqual({
+        content: 'Updated message',
+        flags: 4096,
+      })
+    })
+
+    it('should throw when flags contain unsupported bits on edit', async () => {
       const discord = new Discord({
         token: 'test-token',
         channelId: 'test-channel',
@@ -490,7 +526,7 @@ describe('Discord', () => {
       await expect(
         discord.editMessage('message-id', {
           content: 'Updated message',
-          flags: DiscordMessageFlag.SuppressNotifications,
+          flags: DiscordMessageFlag.SuppressEmbeds | (1 << 3),
         })
       ).rejects.toThrow('Unsupported flags')
       expect(mockFetch).not.toHaveBeenCalled()
@@ -546,8 +582,34 @@ describe('Discord', () => {
       expect(mockFetch).toHaveBeenCalled()
 
       const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
-      expect(call[0]).toContain(
-        'https://discord.com/api/webhooks/123/abc?wait=true/messages/message-id'
+      expect(call[0]).toBe(
+        'https://discord.com/api/webhooks/123/abc/messages/message-id'
+      )
+      expect(call[1]?.method).toBe('PATCH')
+    })
+
+    it('should keep query parameters in the webhook edit URL', async () => {
+      const discord = new Discord({
+        webhookUrl: 'https://discord.com/api/webhooks/123/abc?thread_id=456',
+      })
+      await discord.editMessage('message-id', 'Updated webhook message')
+
+      const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
+      expect(call[0]).toBe(
+        'https://discord.com/api/webhooks/123/abc/messages/message-id?thread_id=456'
+      )
+      expect(call[1]?.method).toBe('PATCH')
+    })
+
+    it('should not duplicate the slash when the webhook URL ends with a slash', async () => {
+      const discord = new Discord({
+        webhookUrl: 'https://discord.com/api/webhooks/123/abc/',
+      })
+      await discord.editMessage('message-id', 'Updated webhook message')
+
+      const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
+      expect(call[0]).toBe(
+        'https://discord.com/api/webhooks/123/abc/messages/message-id'
       )
     })
 
