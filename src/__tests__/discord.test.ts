@@ -324,7 +324,7 @@ describe('Discord', () => {
       expect(mockFetch).not.toHaveBeenCalled()
     })
 
-    it.each([-1, 1.5, NaN, Infinity])(
+    it.each([-1, 1.5, NaN, Infinity, 2 ** 31, 2 ** 32 + 4])(
       'should throw when flags is invalid (%p)',
       async (flags) => {
         const discord = new Discord({
@@ -600,6 +600,49 @@ describe('Discord', () => {
       )
       expect(call[1]?.method).toBe('PATCH')
     })
+
+    it('should encode messageId in the webhook edit URL', async () => {
+      const discord = new Discord({
+        webhookUrl: 'https://discord.com/api/webhooks/123/abc',
+      })
+      await discord.editMessage('../../x', 'Updated webhook message')
+
+      const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
+      expect(call[0]).toBe(
+        'https://discord.com/api/webhooks/123/abc/messages/..%2F..%2Fx'
+      )
+    })
+
+    it('should encode messageId in the bot edit URL', async () => {
+      const discord = new Discord({
+        token: 'test-token',
+        channelId: 'test-channel',
+      })
+      await discord.editMessage('a/b?c#d', 'Updated message')
+
+      const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
+      expect(call[0]).toBe(
+        'https://discord.com/api/channels/test-channel/messages/a%2Fb%3Fc%23d'
+      )
+    })
+
+    it.each(['', '.', '..'])(
+      'should throw when messageId is invalid (%p)',
+      async (messageId) => {
+        const bot = new Discord({ token: 'test-token', channelId: 'ch' })
+        const webhook = new Discord({
+          webhookUrl: 'https://discord.com/api/webhooks/123/abc',
+        })
+
+        await expect(bot.editMessage(messageId, 'Updated')).rejects.toThrow(
+          'Invalid messageId'
+        )
+        await expect(webhook.editMessage(messageId, 'Updated')).rejects.toThrow(
+          'Invalid messageId'
+        )
+        expect(mockFetch).not.toHaveBeenCalled()
+      }
+    )
 
     it('should not duplicate the slash when the webhook URL ends with a slash', async () => {
       const discord = new Discord({

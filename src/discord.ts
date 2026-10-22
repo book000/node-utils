@@ -265,10 +265,11 @@ export class Discord {
    * @throws flags が 0 以上の整数でない場合、または受理されない flag を含む場合
    */
   private validateFlags(flags: number, allowedFlags: number): void {
+    // JavaScript のビット演算子は 32bit 符号付き整数で動作する (0x7f_ff_ff_ff はその最大値)。
+    // 上限を超える値は 32bit に丸められて検証をすり抜けるため、ビット演算の前に拒否する
     if (!Number.isSafeInteger(flags) || flags < 0 || flags > 0x7f_ff_ff_ff) {
       throw new Error(`Invalid flags: ${flags} must be a non-negative integer`)
     }
-    // ビット演算は 32bit 符号付き整数で行われるため、上限を超えないことを先に確認している
     const unsupported = flags & ~allowedFlags
     if (unsupported !== 0) {
       throw new Error(
@@ -341,13 +342,29 @@ export class Discord {
       : this.editWebhook(messageId, formData))
   }
 
+  /**
+   * メッセージ ID を URL のパスセグメントとして安全な形にする
+   *
+   * @param messageId 編集するメッセージの ID
+   * @returns エンコード済みのメッセージ ID
+   * @throws メッセージ ID が空、または `.` / `..` の場合
+   */
+  private encodeMessageId(messageId: string): string {
+    const encoded = encodeURIComponent(messageId)
+    // `.` と `..` は URL の解決時にパスの階層として扱われ、/messages/ の外を指してしまう
+    if (['', '.', '..'].includes(encoded)) {
+      throw new Error(`Invalid messageId: ${messageId}`)
+    }
+    return encoded
+  }
+
   private async editBot(messageId: string, formData: FormData): Promise<void> {
     if (!this.isDiscordBotOptions(this.options)) {
       throw new Error('Invalid bot options')
     }
 
     const response = await fetch(
-      `https://discord.com/api/channels/${this.options.channelId}/messages/${messageId}`,
+      `https://discord.com/api/channels/${this.options.channelId}/messages/${this.encodeMessageId(messageId)}`,
       {
         method: 'PATCH',
         headers: {
@@ -373,9 +390,10 @@ export class Discord {
       throw new Error('Invalid webhook options')
     }
 
-    // クエリ文字列 (thread_id など) を保持したまま pathname に /messages/<id> を追加する
+    // href に連結するとクエリ文字列の後ろにパスが付いてしまう (?wait=true/messages/<id>) ため、
+    // pathname に追加する。編集 API は wait を使わないので付与しない
     const urlObject = new URL(this.options.webhookUrl)
-    urlObject.pathname = `${urlObject.pathname.replace(/\/$/, '')}/messages/${messageId}`
+    urlObject.pathname = `${urlObject.pathname.replace(/\/$/, '')}/messages/${this.encodeMessageId(messageId)}`
 
     const response = await fetch(urlObject.href, {
       method: 'PATCH',
