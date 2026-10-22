@@ -125,6 +125,20 @@ export const DiscordMessageFlag = {
   SuppressNotifications: 1 << 12,
 } as const
 
+/** メッセージ送信 (Create Message / Execute Webhook) で指定できる flags */
+const SEND_ALLOWED_FLAGS =
+  DiscordMessageFlag.SuppressEmbeds | DiscordMessageFlag.SuppressNotifications
+
+/** メッセージ編集 (Edit Message / Edit Webhook Message) で指定できる flags */
+const EDIT_ALLOWED_FLAGS = DiscordMessageFlag.SuppressEmbeds
+
+/**
+ * メッセージ flags。他のメッセージ種別と組み合わせて指定できる。
+ *
+ * - 送信時は `SuppressEmbeds` と `SuppressNotifications` を指定できる
+ * - 編集時は `SuppressEmbeds` のみ指定できる (Discord API の仕様)。
+ *   それ以外を含む場合は Error を投げる
+ */
 interface DiscordMessageFlags {
   flags: number
 }
@@ -174,32 +188,75 @@ export class Discord {
   public async sendMessage(
     message: string | DiscordMessage
   ): Promise<string | undefined> {
-    const formData = new FormData()
-
-    if (typeof message === 'string') {
-      formData.append('payload_json', JSON.stringify({ content: message }))
-    } else {
-      formData.append(
-        'payload_json',
-        JSON.stringify({
-          content: 'content' in message ? message.content : undefined,
-          embeds: 'embeds' in message ? message.embeds : undefined,
-          components: 'components' in message ? message.components : undefined,
-        })
-      )
-
-      if ('file' in message) {
-        const filename = `${message.file.isSpoiler === true ? 'SPOILER_' : ''}${message.file.name}`
-        const blob = new Blob([message.file.file], {
-          type: message.file.contentType,
-        })
-        formData.append('file', blob, filename) // WHATWG FormData (Node.js 18+)
-      }
-    }
+    const formData = this.buildFormData(message, SEND_ALLOWED_FLAGS)
 
     return await (this.isDiscordBotOptions(this.options)
       ? this.sendBot(formData)
       : this.sendWebhook(formData))
+  }
+
+  /**
+   * 送信・編集 API に渡す FormData を生成する
+   *
+   * @param message 送信・編集するメッセージ
+   * @param allowedFlags API が受理する flags のビットマスク
+   * @returns payload_json (と添付ファイル) を含む FormData
+   */
+  private buildFormData(
+    message: string | DiscordMessage,
+    allowedFlags: number
+  ): FormData {
+    const formData = new FormData()
+
+    if (typeof message === 'string') {
+      formData.append('payload_json', JSON.stringify({ content: message }))
+      return formData
+    }
+
+    const flags = 'flags' in message ? message.flags : undefined
+    if (flags !== undefined) {
+      this.validateFlags(flags, allowedFlags)
+    }
+
+    formData.append(
+      'payload_json',
+      JSON.stringify({
+        content: 'content' in message ? message.content : undefined,
+        embeds: 'embeds' in message ? message.embeds : undefined,
+        components: 'components' in message ? message.components : undefined,
+        flags,
+      })
+    )
+
+    if ('file' in message) {
+      const filename = `${message.file.isSpoiler === true ? 'SPOILER_' : ''}${message.file.name}`
+      const blob = new Blob([message.file.file], {
+        type: message.file.contentType,
+      })
+      formData.append('file', blob, filename) // WHATWG FormData (Node.js 18+)
+    }
+
+    return formData
+  }
+
+  /**
+   * flags が API の制約に沿っているか検証する
+   *
+   * @param flags 検証する flags
+   * @param allowedFlags API が受理する flags のビットマスク
+   * @throws flags が 0 以上の整数でない場合、または受理されない flag を含む場合
+   */
+  private validateFlags(flags: number, allowedFlags: number): void {
+    if (!Number.isSafeInteger(flags) || flags < 0 || flags > 0x7f_ff_ff_ff) {
+      throw new Error(`Invalid flags: ${flags} must be a non-negative integer`)
+    }
+    // ビット演算は 32bit 符号付き整数で行われるため、上限を超えないことを先に確認している
+    const unsupported = flags & ~allowedFlags
+    if (unsupported !== 0) {
+      throw new Error(
+        `Unsupported flags: ${unsupported} cannot be set (allowed mask: ${allowedFlags})`
+      )
+    }
   }
 
   private async sendBot(formData: FormData): Promise<string> {
@@ -259,28 +316,7 @@ export class Discord {
     messageId: string,
     message: string | DiscordMessage
   ): Promise<void> {
-    const formData = new FormData()
-
-    if (typeof message === 'string') {
-      formData.append('payload_json', JSON.stringify({ content: message }))
-    } else {
-      formData.append(
-        'payload_json',
-        JSON.stringify({
-          content: 'content' in message ? message.content : undefined,
-          embeds: 'embeds' in message ? message.embeds : undefined,
-          components: 'components' in message ? message.components : undefined,
-        })
-      )
-
-      if ('file' in message) {
-        const filename = `${message.file.isSpoiler === true ? 'SPOILER_' : ''}${message.file.name}`
-        const blob = new Blob([message.file.file], {
-          type: message.file.contentType,
-        })
-        formData.append('file', blob, filename)
-      }
-    }
+    const formData = this.buildFormData(message, EDIT_ALLOWED_FLAGS)
 
     await (this.isDiscordBotOptions(this.options)
       ? this.editBot(messageId, formData)

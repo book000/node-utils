@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-import { Discord } from '../discord'
+import { Discord, DiscordMessageFlag } from '../discord'
 
 // global.fetch をモック化
 const mockFetch = jest.fn()
@@ -26,6 +26,21 @@ FormData.prototype.append = jest.fn(
     return {} as any
   }
 )
+
+/**
+ * モックした FormData.append の呼び出しから payload_json を取り出す
+ */
+function getPayloadJson(): Record<string, unknown> {
+  const calls = (FormData.prototype.append as jest.Mock).mock.calls as [
+    string,
+    unknown,
+  ][]
+  const call = calls.find(([field]) => field === 'payload_json')
+  if (call === undefined) {
+    throw new Error('payload_json was not appended')
+  }
+  return JSON.parse(call[1] as string) as Record<string, unknown>
+}
 
 // DiscordButtonStylesタイプの定数を定義（テスト用）
 const LinkStyle = 5 as const
@@ -230,6 +245,100 @@ describe('Discord', () => {
       expect(messageId).toBe('mock-message-id')
     })
 
+    it('should include flags in payload_json when sending', async () => {
+      const discord = new Discord({
+        token: 'test-token',
+        channelId: 'test-channel',
+      })
+
+      await discord.sendMessage({
+        content: 'Test message',
+        flags:
+          DiscordMessageFlag.SuppressEmbeds |
+          DiscordMessageFlag.SuppressNotifications,
+      })
+
+      expect(getPayloadJson()).toEqual({
+        content: 'Test message',
+        flags: 4100,
+      })
+    })
+
+    it('should include flags in payload_json when sending via webhook', async () => {
+      const discord = new Discord({
+        webhookUrl: 'https://discord.com/api/webhooks/123/abc',
+      })
+
+      await discord.sendMessage({
+        embeds: [{ title: 'Test' }],
+        flags: DiscordMessageFlag.SuppressNotifications,
+      })
+
+      expect(getPayloadJson()).toEqual({
+        embeds: [{ title: 'Test' }],
+        flags: 4096,
+      })
+    })
+
+    it('should keep the file attachment and flags together', async () => {
+      const discord = new Discord({
+        token: 'test-token',
+        channelId: 'test-channel',
+      })
+
+      await discord.sendMessage({
+        file: { name: 'test.txt', file: new ArrayBuffer(8) },
+        flags: DiscordMessageFlag.SuppressNotifications,
+      })
+
+      expect(getPayloadJson()).toEqual({ flags: 4096 })
+      expect(FormData.prototype.append).toHaveBeenCalledWith(
+        'file',
+        expect.anything(),
+        'test.txt'
+      )
+    })
+
+    it('should not include flags when flags are not specified', async () => {
+      const discord = new Discord({
+        token: 'test-token',
+        channelId: 'test-channel',
+      })
+
+      await discord.sendMessage({ content: 'Test message' })
+
+      const payload = getPayloadJson()
+      expect(payload).toEqual({ content: 'Test message' })
+      expect('flags' in payload).toBe(false)
+    })
+
+    it('should throw when flags contain unsupported bits on send', async () => {
+      const discord = new Discord({
+        token: 'test-token',
+        channelId: 'test-channel',
+      })
+
+      await expect(
+        discord.sendMessage({ content: 'Test', flags: 1 << 3 })
+      ).rejects.toThrow('Unsupported flags')
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it.each([-1, 1.5, NaN, Infinity])(
+      'should throw when flags is invalid (%p)',
+      async (flags) => {
+        const discord = new Discord({
+          token: 'test-token',
+          channelId: 'test-channel',
+        })
+
+        await expect(
+          discord.sendMessage({ content: 'Test', flags })
+        ).rejects.toThrow('Invalid flags')
+        expect(mockFetch).not.toHaveBeenCalled()
+      }
+    )
+
     it('should send a message via webhook', async () => {
       const discord = new Discord({
         webhookUrl: 'https://discord.com/api/webhooks/123/abc',
@@ -326,6 +435,65 @@ describe('Discord', () => {
       const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
       expect(call[0]).toContain('/channels/test-channel/messages/message-id')
       expect(call[1]?.headers).toHaveProperty('Authorization', 'Bot test-token')
+    })
+
+    it('should include flags in payload_json when editing', async () => {
+      const discord = new Discord({
+        token: 'test-token',
+        channelId: 'test-channel',
+      })
+
+      await discord.editMessage('message-id', {
+        content: 'Updated message',
+        flags: DiscordMessageFlag.SuppressEmbeds,
+      })
+
+      expect(getPayloadJson()).toEqual({
+        content: 'Updated message',
+        flags: 4,
+      })
+    })
+
+    it('should include flags in payload_json when editing via webhook', async () => {
+      const discord = new Discord({
+        webhookUrl: 'https://discord.com/api/webhooks/123/abc',
+      })
+
+      await discord.editMessage('message-id', {
+        embeds: [{ title: 'Test' }],
+        flags: DiscordMessageFlag.SuppressEmbeds,
+      })
+
+      expect(getPayloadJson()).toEqual({
+        embeds: [{ title: 'Test' }],
+        flags: 4,
+      })
+    })
+
+    it('should not include flags when editing without flags', async () => {
+      const discord = new Discord({
+        token: 'test-token',
+        channelId: 'test-channel',
+      })
+
+      await discord.editMessage('message-id', 'Updated message')
+
+      expect(getPayloadJson()).toEqual({ content: 'Updated message' })
+    })
+
+    it('should throw when SuppressNotifications is used on edit', async () => {
+      const discord = new Discord({
+        token: 'test-token',
+        channelId: 'test-channel',
+      })
+
+      await expect(
+        discord.editMessage('message-id', {
+          content: 'Updated message',
+          flags: DiscordMessageFlag.SuppressNotifications,
+        })
+      ).rejects.toThrow('Unsupported flags')
+      expect(mockFetch).not.toHaveBeenCalled()
     })
 
     it('should edit an embed message via bot', async () => {

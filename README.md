@@ -108,7 +108,7 @@ ErrorReporter.captureException(new Error('boom'), { userId: '123' })
 You can send messages to the Discord using the Discord Bot or the Discord Webhook.
 
 ```typescript
-import { Discord } from '@book000/node-utils'
+import { Discord, DiscordMessageFlag } from '@book000/node-utils'
 
 export async function main() {
   const discord = new Discord({
@@ -133,10 +133,21 @@ export async function main() {
       },
     ],
   })
+
+  // Suppress embeds and notifications using flags
+  await discord.sendMessage({
+    content: 'https://example.com',
+    flags:
+      DiscordMessageFlag.SuppressEmbeds |
+      DiscordMessageFlag.SuppressNotifications,
+  })
 }
 
 main()
 ```
+
+`flags` can be combined with `content`, `embeds`, `components` and `file`.
+`sendMessage()` accepts `SuppressEmbeds` and `SuppressNotifications`, while `editMessage()` accepts only `SuppressEmbeds` (Discord API restriction). Unsupported flags throw an error.
 
 ## 📑 License
 
