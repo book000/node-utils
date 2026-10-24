@@ -87,6 +87,8 @@ const logger = Logger.configure('main')
 logger.error('Something went wrong', new Error('boom'))
 ```
 
+The forwarded issue keeps the original error's name and message as its title, and the log message (`'Something went wrong'`) is attached as the `log.message` tag. Issues are grouped by a fingerprint of the level, error name, and first application stack frame (function and file name), or by the message for logs without an `Error`. Logging an error and then rethrowing it still reports it twice.
+
 | Environment variable | Required | Default | Description |
 |---|---|---|---|
 | `SENTRY_DSN` | No (opt-in) | none | When unset, `SentryTransport` / `ErrorReporter` are fully no-op |

@@ -6,6 +6,40 @@ import {
 } from './sentry/sentry-client'
 
 /**
+ * スタックから node_modules / Node 内部を除いた最初のフレームを返す
+ *
+ * デプロイ先のパスや行番号の変化でグループが割れないよう、関数名とファイル名だけにする
+ */
+function firstAppFrame(error: Error): string | undefined {
+  const frame = error.stack
+    ?.split('\n')
+    .find(
+      (line) =>
+        line.trimStart().startsWith('at ') &&
+        !line.includes('node_modules') &&
+        !line.includes('node:internal')
+    )
+    ?.trim()
+  if (frame === undefined) {
+    return undefined
+  }
+
+  // 入力はスタック文字列で長さが不定なため、正規表現ではなく文字列操作で分解する (ReDoS 回避)
+  const open = frame.endsWith(')') ? frame.lastIndexOf('(') : -1
+  const prefix = open === -1 ? 'at ' : frame.slice(0, open)
+  const location = open === -1 ? frame.slice(3) : frame.slice(open + 1, -1)
+  const file = location.slice(
+    Math.max(location.lastIndexOf('/'), location.lastIndexOf('\\')) + 1
+  )
+  const parts = file.split(':')
+  const hasPosition =
+    parts.length >= 3 &&
+    /^\d+$/.test(parts.at(-1) ?? '') &&
+    /^\d+$/.test(parts.at(-2) ?? '')
+  return prefix + (hasPosition ? parts.slice(0, -2).join(':') : file)
+}
+
+/**
  * SentryTransport の初期化オプション
  */
 export interface SentryTransportOptions
@@ -36,10 +70,8 @@ export class SentryTransport extends TransportStream {
 
     const { level, message, ...rest } = info
     const messageText = typeof message === 'string' ? message : String(message)
-    if (level === 'error' && typeof rest.stack === 'string') {
-      Sentry.captureException(this.toError(messageText, rest.stack))
-    } else if (level === 'error' || level === 'warn') {
-      Sentry.captureMessage(messageText, toSeverityLevel(level))
+    if (level === 'error' || level === 'warn') {
+      this.capture(level, messageText, info, rest.stack)
     }
 
     if (level === 'error') {
@@ -58,14 +90,70 @@ export class SentryTransport extends TransportStream {
     callback()
   }
 
-  private toError(message: string, stack: string): Error {
+  /**
+   * ログを Sentry へ送る
+   *
+   * winston は `logger.error(msg, err)` のとき message に `msg + err.message` を連結するため、
+   * そのまま送るとタイトルがログメッセージ込みで変動しグルーピングが崩れる。
+   * 元の Error (splat から取得。なければ stack から再構築) を送り、ログメッセージはタグへ、グルーピングは fingerprint で固定する。
+   * message のみのイベントは captureMessage だと合成スタックが付きタイトルが変わるため captureEvent で送る
+   */
+  private capture(
+    level: 'error' | 'warn',
+    message: string,
+    info: Record<string, unknown>,
+    stack: unknown
+  ): void {
+    // Sentry は同一 Error インスタンスの 2 回目以降の送信を捨てるため、
+    // 元の Error は複製して送る (同じ Error を warn → error と連続してログしても欠落しない)
+    const original = this.findError(info)
+    const error = original
+      ? this.toError(original.message, original.stack ?? '', original.name)
+      : typeof stack === 'string'
+        ? this.toError(message, stack)
+        : undefined
+    Sentry.withScope((scope) => {
+      scope.setLevel(toSeverityLevel(level))
+      scope.setTag('log.message', message)
+      if (error) {
+        scope.setFingerprint([
+          level,
+          error.name,
+          firstAppFrame(error) ?? error.message,
+        ])
+        Sentry.captureException(error)
+      } else {
+        // メッセージの可変部は正規化せず、そのまま fingerprint に使う
+        scope.setFingerprint([level, message])
+        Sentry.captureEvent({ message, level: toSeverityLevel(level) })
+      }
+    })
+  }
+
+  /**
+   * winston が保持する引数 (splat) から元の Error を取り出す
+   */
+  private findError(info: Record<string, unknown>): Error | undefined {
+    const splat = (info as Record<symbol, unknown>)[Symbol.for('splat')]
+    if (!Array.isArray(splat)) return undefined
+    for (const arg of splat as unknown[]) {
+      if (arg instanceof Error) return arg
+      const nested = (arg as { error?: unknown } | null)?.error
+      if (nested instanceof Error) return nested
+    }
+    return undefined
+  }
+
+  private toError(message: string, stack: string, errorName?: string): Error {
     const error = new Error(message)
     // unicorn/no-error-property-assignment はビルトイン Error への直接代入を禁止するため、
     // winston から受け取った stack 文字列・エラー名を Sentry へそのまま渡すには defineProperty を使う
     const firstLine = stack.split('\n', 1)[0]
-    const name = firstLine.includes(': ')
-      ? firstLine.slice(0, firstLine.indexOf(': '))
-      : undefined
+    const name =
+      errorName ??
+      (firstLine.includes(': ')
+        ? firstLine.slice(0, firstLine.indexOf(': '))
+        : undefined)
     if (name) {
       Object.defineProperty(error, 'name', { value: name, configurable: true })
     }
