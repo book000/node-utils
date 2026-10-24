@@ -11,7 +11,7 @@ import {
  * デプロイ先のパスや行番号の変化でグループが割れないよう、関数名とファイル名だけにする
  */
 function firstAppFrame(error: Error): string | undefined {
-  return error.stack
+  const frame = error.stack
     ?.split('\n')
     .find(
       (line) =>
@@ -20,7 +20,23 @@ function firstAppFrame(error: Error): string | undefined {
         !line.includes('node:internal')
     )
     ?.trim()
-    .replace(/\(?(?:[^()]*[\\/])?([^\\/()]+?):\d+:\d+\)?$/, '$1')
+  if (frame === undefined) {
+    return undefined
+  }
+
+  // 入力はスタック文字列で長さが不定なため、正規表現ではなく文字列操作で分解する (ReDoS 回避)
+  const open = frame.endsWith(')') ? frame.lastIndexOf('(') : -1
+  const prefix = open === -1 ? 'at ' : frame.slice(0, open)
+  const location = open === -1 ? frame.slice(3) : frame.slice(open + 1, -1)
+  const file = location.slice(
+    Math.max(location.lastIndexOf('/'), location.lastIndexOf('\\')) + 1
+  )
+  const parts = file.split(':')
+  const hasPosition =
+    parts.length >= 3 &&
+    /^\d+$/.test(parts.at(-1) ?? '') &&
+    /^\d+$/.test(parts.at(-2) ?? '')
+  return prefix + (hasPosition ? parts.slice(0, -2).join(':') : file)
 }
 
 /**

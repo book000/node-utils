@@ -25,6 +25,19 @@ jest.mock('../sentry/sentry-client', () => ({
   ),
 }))
 
+/**
+ * 指定したスタック文字列を持つ Error を作る
+ *
+ * @param message Error のメッセージ
+ * @param stack 差し替えるスタック文字列
+ * @returns スタックを差し替えた Error
+ */
+function withStack(message: string, stack: string): Error {
+  const error = new Error(message)
+  Object.defineProperty(error, 'stack', { value: stack })
+  return error
+}
+
 describe('SentryTransport', () => {
   let transport: SentryTransport
 
@@ -67,6 +80,39 @@ describe('SentryTransport', () => {
         expect.stringMatching(/sentry-transport\.test\.ts$/),
       ])
       expect(Sentry.captureEvent).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      ['    at run (/srv/app/dist/main.js:10:5)', 'at run main.js'],
+      ['    at /srv/app/dist/main.js:10:5', 'at main.js'],
+      [
+        String.raw`    at async run (C:\srv\app\dist\main.js:10:5)`,
+        'at async run main.js',
+      ],
+      ['    at new Foo (<anonymous>)', 'at new Foo <anonymous>'],
+    ])(
+      'should reduce the stack frame %j to %j in the fingerprint',
+      (frame, expected) => {
+        const error = withStack('frame', `Error: frame\n${frame}`)
+        createLogger().error('failed', error)
+
+        expect(scope.setFingerprint).toHaveBeenCalledWith([
+          'error',
+          'Error',
+          expected,
+        ])
+      }
+    )
+
+    it('should not take quadratic time on a very long frame', () => {
+      const error = withStack(
+        'long',
+        `Error: long\n    at run (${'('.repeat(50_000)}main.js:1:1)`
+      )
+      const start = Date.now()
+      createLogger().error('failed', error)
+
+      expect(Date.now() - start).toBeLessThan(1000)
     })
 
     it('should capture the same Error instance every time it is logged', () => {
