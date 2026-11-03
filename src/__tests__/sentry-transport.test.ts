@@ -1,12 +1,14 @@
 import * as Sentry from '@sentry/node'
 import winston from 'winston'
-import { SentryTransport } from '../sentry-transport'
+import TransportStream from 'winston-transport'
+import { SentryTransport, toSentryMetaArg } from '../sentry-transport'
 import { ensureSentryInitialized } from '../sentry/sentry-client'
 
 const scope = {
   setLevel: jest.fn(),
   setTag: jest.fn(),
   setFingerprint: jest.fn(),
+  setExtra: jest.fn(),
 }
 
 jest.mock('@sentry/node', () => ({
@@ -37,6 +39,10 @@ function withStack(message: string, stack: string): Error {
   Object.defineProperty(error, 'stack', { value: stack })
   return error
 }
+
+/** winston は error レベルの callback (flush 待ち) が返るまで次のログを保留するため、次のログ前に待つ */
+const settle = (): Promise<void> =>
+  new Promise((resolve) => setImmediate(resolve))
 
 describe('SentryTransport', () => {
   let transport: SentryTransport
@@ -124,6 +130,193 @@ describe('SentryTransport', () => {
       const calls = (Sentry.captureException as jest.Mock).mock.calls
       expect(calls).toHaveLength(2)
       expect(calls[0]).not.toBe(error)
+    })
+
+    describe('SentryMeta', () => {
+      // 不正な値を渡すテストのため型を緩める
+      const meta = (m: Record<string, unknown>): Record<string, unknown> =>
+        toSentryMetaArg(m)
+
+      it('should pass an explicit fingerprint verbatim (Error and message-only)', async () => {
+        const logger = createLogger()
+        logger.error(
+          'a',
+          new Error('e'),
+          meta({ fingerprint: ['k', '{{ default }}'] })
+        )
+        await settle()
+        logger.warn('b', undefined, meta({ fingerprint: ['k2'] }))
+
+        expect(scope.setFingerprint).toHaveBeenNthCalledWith(1, [
+          'k',
+          '{{ default }}',
+        ])
+        expect(scope.setFingerprint).toHaveBeenNthCalledWith(2, ['k2'])
+      })
+
+      it('should set tags and extra, and keep log.message authoritative', () => {
+        createLogger().warn(
+          'careful',
+          undefined,
+          meta({
+            tags: { feature: 'x', 'log.message': 'spoof', bad: 1 },
+            extra: { id: 7 },
+          })
+        )
+
+        expect(scope.setTag).toHaveBeenCalledWith('feature', 'x')
+        expect(scope.setTag).not.toHaveBeenCalledWith('bad', expect.anything())
+        expect(scope.setTag).toHaveBeenLastCalledWith('log.message', 'careful')
+        expect(scope.setExtra).toHaveBeenCalledWith('id', 7)
+      })
+
+      it('should ignore a malformed fingerprint and fall back to the default', () => {
+        createLogger().warn(
+          'careful',
+          undefined,
+          meta({ fingerprint: ['ok', 1] })
+        )
+
+        expect(scope.setFingerprint).toHaveBeenCalledWith(['warn', 'careful'])
+      })
+
+      it.each(['warn', 'error'] as const)(
+        'should not capture or flush when sentry is false (%s)',
+        async (level) => {
+          const logger = createLogger()
+          logger[level]('quiet', new Error('e'), meta({ sentry: false }))
+          await new Promise((resolve) => setImmediate(resolve))
+
+          expect(Sentry.captureException).not.toHaveBeenCalled()
+          expect(Sentry.captureEvent).not.toHaveBeenCalled()
+          expect(Sentry.flush).not.toHaveBeenCalled()
+        }
+      )
+
+      it('should not expand the reserved key into top-level info fields', () => {
+        const seen: Record<string, unknown>[] = []
+        const spy = new (class extends TransportStream {
+          log(info: Record<string, unknown>, callback: () => void): void {
+            seen.push(info)
+            callback()
+          }
+        })()
+        const logger = winston.createLogger({
+          format: winston.format.errors({ stack: true }),
+          transports: [spy],
+        })
+        logger.error('m', new Error('e'), meta({ extra: { a: 1 } }))
+        logger.error('m', undefined, meta({ extra: { a: 1 } }))
+
+        for (const info of seen) {
+          expect(Object.keys(info)).not.toContain('sentryMeta')
+          expect(Object.keys(info)).not.toContain('extra')
+        }
+      })
+    })
+
+    describe('SentryMeta spoofing and robustness', () => {
+      it('should ignore a sentryMeta property carried by user data', () => {
+        const spoofed = Object.assign(new Error('e'), {
+          sentryMeta: { sentry: false, fingerprint: ['evil'] },
+        })
+        createLogger().error('failed', spoofed)
+
+        expect(Sentry.captureException).toHaveBeenCalledTimes(1)
+        expect(scope.setFingerprint).not.toHaveBeenCalledWith(['evil'])
+      })
+
+      it('should still invoke the callback when capture throws', () => {
+        const callback = jest.fn()
+        const onError = jest.fn()
+        transport.on('error', onError)
+        const extra = {
+          get boom(): never {
+            throw new Error('getter')
+          },
+        }
+        transport.log(
+          {
+            level: 'warn',
+            message: 'x',
+            [Symbol.for('splat')]: [undefined, toSentryMetaArg({ extra })],
+          },
+          callback
+        )
+
+        expect(onError).toHaveBeenCalledWith(expect.any(Error))
+        expect(callback).toHaveBeenCalledTimes(1)
+      })
+
+      it.each([
+        ['sentry:false', { sentry: false }],
+        ['already reported', undefined],
+      ])('should invoke the callback once when skipped (%s)', (_, m) => {
+        const error = new Error('dup')
+        const info = (): Record<string, unknown> => ({
+          level: 'error',
+          message: 'x',
+          [Symbol.for('splat')]: m ? [error, toSentryMetaArg(m)] : [error],
+        })
+        if (!m) transport.log(info(), jest.fn())
+        const callback = jest.fn()
+        transport.log(info(), callback)
+
+        expect(callback).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    describe('same-instance dedup', () => {
+      it('should report one event for log then rethrow then unhandledRejection', async () => {
+        const error = new Error('rethrown')
+        const logger = createLogger()
+        logger.error('failed', error)
+        await settle()
+        // unhandledRejection フック相当
+        logger.error('unhandledRejection', error)
+        await settle()
+
+        expect(Sentry.captureException).toHaveBeenCalledTimes(1)
+        expect(Sentry.flush).toHaveBeenCalledTimes(1)
+      })
+
+      it('should dedup across transports (category loggers vs the main hook)', () => {
+        const other = new SentryTransport({
+          dsn: 'https://example.com/1',
+          level: 'warn',
+        })
+        const error = new Error('cross')
+        const info = {
+          level: 'warn',
+          message: 'x',
+          [Symbol.for('splat')]: [error],
+        }
+        transport.log(info, jest.fn())
+        other.log(info, jest.fn())
+
+        expect(Sentry.captureException).toHaveBeenCalledTimes(1)
+      })
+
+      it('should still report distinct instances separately', async () => {
+        const logger = createLogger()
+        logger.error('failed', new Error('same message'))
+        await settle()
+        logger.error('failed', new Error('same message'))
+        await settle()
+
+        expect(Sentry.captureException).toHaveBeenCalledTimes(2)
+      })
+
+      it('should not mark an Error reported when sentry is false', async () => {
+        const error = new Error('quiet then loud')
+        const logger = createLogger()
+        logger.error('a', error, toSentryMetaArg({ sentry: false }))
+        await settle()
+        logger.error('b', error)
+        await settle()
+
+        expect(Sentry.captureException).toHaveBeenCalledTimes(1)
+      })
     })
 
     it('should rebuild the Error from stack when only logger.error(err) is used', () => {
