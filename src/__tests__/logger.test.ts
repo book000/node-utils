@@ -58,6 +58,7 @@ jest.mock('winston-daily-rotate-file')
 
 // SentryTransportをモック化 (実際のSentry.init()を走らせないため)
 jest.mock('../sentry-transport', () => ({
+  toSentryMetaArg: (meta: unknown) => ({ sentryMeta: meta }),
   SentryTransport: jest.fn().mockImplementation(() => ({
     log: jest.fn(),
   })),
@@ -422,6 +423,29 @@ describe('Logger', () => {
         metadata
       )
     })
+
+    it.each(['warn', 'error'] as const)(
+      'should pass only the reserved sentryMeta key as a third argument to %s',
+      (level) => {
+        const error = new Error('boom')
+        const meta = { fingerprint: ['x'], sentry: false }
+        loggerInstance[level]('msg', error, meta)
+
+        expect(mockWinstonLogger[level]).toHaveBeenCalledWith('msg', error, {
+          sentryMeta: meta,
+        })
+      }
+    )
+
+    it.each(['warn', 'error'] as const)(
+      'should keep the two-argument call to %s when meta is omitted',
+      (level) => {
+        loggerInstance[level]('msg')
+
+        expect(mockWinstonLogger[level]).toHaveBeenCalledWith('msg', undefined)
+        expect(mockWinstonLogger[level].mock.calls.at(-1)).toHaveLength(2)
+      }
+    )
 
     it('should call info method with message', () => {
       loggerInstance.info('Info message')

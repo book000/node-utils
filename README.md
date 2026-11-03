@@ -87,7 +87,22 @@ const logger = Logger.configure('main')
 logger.error('Something went wrong', new Error('boom'))
 ```
 
-The forwarded issue keeps the original error's name and message as its title, and the log message (`'Something went wrong'`) is attached as the `log.message` tag. Issues are grouped by a fingerprint of the level, error name, and first application stack frame (function and file name), or by the message for logs without an `Error`. Logging an error and then rethrowing it still reports it twice.
+The forwarded issue keeps the original error's name and message as its title, and the log message (`'Something went wrong'`) is attached as the `log.message` tag. Issues are grouped by a fingerprint of the level, error name, and first application stack frame (function and file name), or by the message for logs without an `Error`.
+
+An `Error` instance that was already reported at a given level is not reported again (regardless of the logger category), so `logger.error('failed', err)` followed by a rethrow caught by the built-in `unhandledRejection` / `uncaughtException` hooks sends one event. Distinct `Error` instances are never deduplicated, and the same instance logged first as `warn` and later as `error` is still reported twice (once per level).
+
+`Logger.warn` / `Logger.error` accept an optional third argument `SentryMeta` to control what is sent to Sentry for that log:
+
+```typescript
+logger.error('Payment failed', error, {
+  fingerprint: ['payment-failed', '{{ default }}'], // replaces the automatic fingerprint
+  tags: { feature: 'checkout' }, // string values only
+  extra: { orderId: 42 }, // do not put secrets here
+})
+logger.warn('Expected, noisy condition', undefined, { sentry: false }) // never sent to Sentry
+```
+
+Invalid values (a non-string-array `fingerprint`, non-string tag values) are ignored. The `log.message` tag cannot be overridden. `SentryMeta` is not written to the console or log files, and only the argument built by `Logger` is honored (a `sentryMeta` property on an error object is ignored). Forwarding logs below `warn` (`sentry: true`) is not supported yet.
 
 | Environment variable | Required | Default | Description |
 |---|---|---|---|

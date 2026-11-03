@@ -3,7 +3,11 @@ import WinstonDailyRotateFile from 'winston-daily-rotate-file'
 import cycle from 'cycle'
 import moment from 'moment-timezone'
 import * as Sentry from '@sentry/node'
-import { SentryTransport } from './sentry-transport'
+import {
+  SentryMeta,
+  SentryTransport,
+  toSentryMetaArg,
+} from './sentry-transport'
 import { resetSentryInitialized } from './sentry/sentry-client'
 
 /**
@@ -53,9 +57,15 @@ export class Logger {
    *
    * @param message メッセージ
    * @param error エラー
+   * @param meta Sentry への送信を制御するメタ情報 (省略時は従来どおり自動で送信する)
    */
-  public warn(message: string, error?: Error): void {
-    this.logger.warn(message, error)
+  public warn(message: string, error?: Error, meta?: SentryMeta): void {
+    if (meta === undefined) {
+      this.logger.warn(message, error)
+      return
+    }
+    // error 位置を必ず埋めることで、meta が info のトップレベルへ展開されず出力に漏れない
+    this.logger.warn(message, error, toSentryMetaArg(meta))
   }
 
   /**
@@ -63,9 +73,15 @@ export class Logger {
    *
    * @param message メッセージ
    * @param error エラー
+   * @param meta Sentry への送信を制御するメタ情報 (省略時は従来どおり自動で送信する)
    */
-  public error(message: string, error?: Error): void {
-    this.logger.error(message, error)
+  public error(message: string, error?: Error, meta?: SentryMeta): void {
+    if (meta === undefined) {
+      this.logger.error(message, error)
+      return
+    }
+    // error 位置を必ず埋めることで、meta が info のトップレベルへ展開されず出力に漏れない
+    this.logger.error(message, error, toSentryMetaArg(meta))
   }
 
   /**
