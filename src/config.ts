@@ -2,31 +2,29 @@ import fs from 'node:fs'
 import { parse } from 'jsonc-parser'
 
 /**
- * 設定ファイルを管理するフレームワーククラス
+ * Base class for managing a configuration file.
  *
- * 設定ファイルは JSONC 形式でパースされる。
+ * The file is parsed as JSONC (comments and trailing commas are allowed).
+ * Subclasses define the validation rules in {@link validates}.
  *
- * @template IConfig 設定ファイルの型
+ * @template IConfig Type of the configuration file
  */
 export abstract class ConfigFramework<IConfig> {
-  /** 設定ファイルのパス */
+  /** Path of the configuration file */
   private path: string
   private config: IConfig | undefined
   private validateFailures: string[] = []
 
   /**
-   * コンストラクタ
+   * Resolves the configuration file path. The file is not read here; call {@link load} for that.
    *
-   * ファイルの読み込みは行わない。{@link load} を呼び出すことで読み込む。
+   * The first existing file among the following candidates is used, in this order:
+   * 1. the `CONFIG_PATH` environment variable
+   * 2. the `CONFIG_FILE` environment variable
+   * 3. the `path` argument
    *
-   * 原則、以下の環境変数を利用する。値の場所にファイルがあればそれを利用する。
-   * - CONFIG_PATH
-   * - CONFIG_FILE
-   * 環境変数に値が設定されておらず、設定ファイルのパスが path に指定されていてそのファイルがある場合はそのファイルを設定ファイルとして使用する
-   * いずれの方法でもパスを取得できない場合はエラーを投げる
-   *
-   * @param path 設定ファイルのパス
-   * @returns インスタンス
+   * @param path Fallback path of the configuration file
+   * @throws If none of the candidates points to an existing file
    */
   constructor(path?: string) {
     const paths = [
@@ -41,20 +39,19 @@ export abstract class ConfigFramework<IConfig> {
   }
 
   /**
-   * 設定ファイルの検証ルールを定義する
+   * Defines the validation rules for the configuration file.
    *
-   * key には検証ルールの名前を指定する。
-   * value には検証ルールを定義する関数を指定する。
+   * Each key is the name of a rule, and each value is a function that returns true when the configuration passes the rule.
+   * A rule that throws is treated as failed.
    *
-   * @returns 検証ルール
+   * @returns Validation rules
    */
   protected abstract validates(): Record<string, (config: IConfig) => boolean>
 
   /**
-   * 設定ファイルを読み込む
+   * Reads and parses the configuration file resolved by the constructor.
    *
-   * 設定ファイルのパスはコンストラクタで指定されたものが利用される。
-   * この関数内ではバリデーションは行わないので、{@link validate} を呼び出す必要がある。
+   * No validation is done here; call {@link validate} afterwards.
    */
   public load(): void {
     const data = fs.readFileSync(this.path, 'utf8')
@@ -63,12 +60,12 @@ export abstract class ConfigFramework<IConfig> {
   }
 
   /**
-   * 設定ファイルのバリデーションを行う
+   * Validates the loaded configuration against the rules from {@link validates}.
    *
-   * この関数を呼び出す前に、{@link load} を呼び出して設定ファイルを読み込んでおく必要がある。
-   * バリデーションに失敗した場合は、{@link getValidateFailures} で失敗した項目を取得できる。
+   * {@link load} must be called first. The names of the failed rules are available from {@link getValidateFailures}.
    *
-   * @returns バリデーションに成功した場合は true、失敗した場合は false
+   * @returns true if every rule passed, false otherwise
+   * @throws If the configuration has not been loaded
    */
   public validate(): boolean {
     if (!this.config) throw new Error('Config not loaded')
@@ -88,19 +85,20 @@ export abstract class ConfigFramework<IConfig> {
   }
 
   /**
-   * バリデーションに失敗した項目を取得する
+   * Gets the names of the rules that failed in the last {@link validate} call.
    *
-   * @returns バリデーションに失敗した項目の配列
+   * @returns Names of the failed rules
    */
   public getValidateFailures(): string[] {
     return this.validateFailures
   }
 
   /**
-   * 設定の値を取得する
+   * Gets a top-level value of the configuration.
    *
-   * @param key 設定のキー
-   * @returns 設定の値
+   * @param key Key of the configuration
+   * @returns Value of the configuration
+   * @throws If the configuration has not been loaded
    */
   public get<T extends keyof IConfig>(key: T): IConfig[T] {
     if (!this.config) throw new Error('Config not loaded')

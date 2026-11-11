@@ -7,15 +7,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-function-type */
 import { Logger } from '../logger'
 
-// 不要なインポートを削除
-
 import winston from 'winston'
 import WinstonDailyRotateFile from 'winston-daily-rotate-file'
 import moment from 'moment-timezone'
 import * as Sentry from '@sentry/node'
 import { SentryTransport } from '../sentry-transport'
 
-// Winstonをモック化
+// Mock winston
 jest.mock('winston', () => {
   const mockFormat = {
     combine: jest.fn().mockReturnValue('combined-format'),
@@ -27,9 +25,8 @@ jest.mock('winston', () => {
     json: jest.fn().mockReturnValue('json-format'),
   }
 
-  // モックの関数を作成
   const formatFunction = jest.fn().mockReturnValue('format')
-  // formatは独自のフォーマッター関数を返す関数
+  // format returns a custom formatter function
   formatFunction.mockImplementation(() =>
     jest.fn().mockReturnValue('custom-format')
   )
@@ -53,10 +50,10 @@ jest.mock('winston', () => {
   }
 })
 
-// Winston日次ローテートファイルをモック化
+// Mock winston-daily-rotate-file
 jest.mock('winston-daily-rotate-file')
 
-// SentryTransportをモック化 (実際のSentry.init()を走らせないため)
+// Mock SentryTransport (to avoid running the real Sentry.init())
 jest.mock('../sentry-transport', () => ({
   toSentryMetaArg: (meta: unknown) => ({ sentryMeta: meta }),
   SentryTransport: jest.fn().mockImplementation(() => ({
@@ -64,34 +61,30 @@ jest.mock('../sentry-transport', () => ({
   })),
 }))
 
-// @sentry/nodeをモック化 (closeAll()のSentry.close()呼び出し検証用)
+// Mock @sentry/node (to verify the Sentry.close() call in closeAll())
 jest.mock('@sentry/node', () => ({
   close: jest.fn().mockResolvedValue(true),
 }))
 
-// cycleモジュールをモック化
+// Mock cycle
 jest.mock('cycle', () => ({
   decycle: jest.fn((object) => object),
 }))
 
-// インターフェイス定義を追加
 interface MockMomentObject {
   format: jest.Mock<string>
   tz: jest.Mock<MockMomentObject>
 }
 
-// moment-timezoneをモック化
+// Mock moment-timezone
 jest.mock('moment-timezone', () => {
-  // モックを定義
   const mockMomentObject: MockMomentObject = {
     format: jest.fn(() => '2025-05-05 12:00:00.000'),
     tz: jest.fn(() => mockMomentObject),
   }
 
-  // モックの関数を作成
   const mockMomentFunction = jest.fn(() => mockMomentObject)
 
-  // tzプロパティを追加
   ;(mockMomentFunction as any).tz = {
     zone: jest.fn((timezone: string) =>
       timezone === 'Invalid/Timezone' ? null : true
@@ -101,7 +94,7 @@ jest.mock('moment-timezone', () => {
   return mockMomentFunction
 })
 
-// プロセスイベントハンドラのモック用
+// For mocking process event handlers
 const originalProcessOn = process.on
 
 describe('Logger', () => {
@@ -111,7 +104,7 @@ describe('Logger', () => {
     jest.clearAllMocks()
     Logger.closeAll()
     process.env = { ...originalEnvironment }
-    // 環境変数を初期化
+    // Reset environment variables
     delete process.env.LOG_LEVEL
     delete process.env.LOG_FILE_LEVEL
     delete process.env.LOG_DIR
@@ -134,14 +127,14 @@ describe('Logger', () => {
       expect(winston.createLogger).toHaveBeenCalled()
       expect(winston.transports.Console).toHaveBeenCalledWith(
         expect.objectContaining({
-          level: 'info', // デフォルト値
+          level: 'info',
         })
       )
       expect(WinstonDailyRotateFile).toHaveBeenCalledWith(
         expect.objectContaining({
-          level: 'info', // デフォルト値
-          dirname: 'logs', // デフォルト値
-          maxFiles: '30d', // デフォルト値
+          level: 'info',
+          dirname: 'logs',
+          maxFiles: '30d',
         })
       )
       expect(logger).toBeInstanceOf(Logger)
@@ -169,10 +162,10 @@ describe('Logger', () => {
       process.env.LOG_LEVEL = 'debug'
       Logger.configure('cache-test-env')
 
-      // 2 回目の呼び出しでは WinstonDailyRotateFile / createLogger が再度呼ばれない
+      // WinstonDailyRotateFile / createLogger are not called again on the second call
       expect(winston.createLogger).toHaveBeenCalledTimes(1)
       expect(WinstonDailyRotateFile).toHaveBeenCalledTimes(1)
-      // 1 回目呼び出し時点では LOG_LEVEL 未設定だったため、デフォルト値のままである
+      // LOG_LEVEL was unset at the first call, so the default value is kept
       expect(winston.transports.Console).toHaveBeenCalledWith(
         expect.objectContaining({
           level: 'info',
@@ -264,7 +257,7 @@ describe('Logger', () => {
 
       Logger.configure('test')
 
-      // formatの挙動は複雑なため、ここでは呼び出しがあるかのみチェック
+      // The behavior of format is complex, so only check that it was called
       expect(winston.format.json).toHaveBeenCalled()
       expect(WinstonDailyRotateFile).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -284,9 +277,8 @@ describe('Logger', () => {
       )
     })
 
-    // textFormatのテスト
     it('should create text format correctly', () => {
-      // このテストはformatの内部実装に依存しますが、カバレッジ向上のため追加
+      // This test depends on the internals of format; it is here to improve coverage
       const formatPrintf = require('winston').format.printf
 
       Logger.configure('test')
@@ -294,7 +286,7 @@ describe('Logger', () => {
       expect(formatPrintf).toHaveBeenCalled()
       const printfCallback = formatPrintf.mock.calls[0][0]
 
-      // シンプルなケース
+      // Simple case
       const simpleInfo = {
         timestamp: '2025-05-05 12:00:00',
         level: 'info',
@@ -305,7 +297,7 @@ describe('Logger', () => {
       expect(simpleResult).toContain('[test/INFO]')
       expect(simpleResult).toContain('Test message')
 
-      // メタデータがある場合
+      // With metadata
       const metadataInfo = {
         timestamp: '2025-05-05 12:00:00',
         level: 'info',
@@ -315,7 +307,7 @@ describe('Logger', () => {
       const metadataResult = printfCallback(metadataInfo)
       expect(metadataResult).toContain('"extra":"data"')
 
-      // スタックトレースが文字列の場合
+      // Stack trace is a string
       const stackInfo = {
         timestamp: '2025-05-05 12:00:00',
         level: 'error',
@@ -325,7 +317,7 @@ describe('Logger', () => {
       const stackResult = printfCallback(stackInfo)
       expect(stackResult).toContain('  at line1')
 
-      // スタックトレースがオブジェクトの場合
+      // Stack trace is an object
       const objectStackInfo = {
         timestamp: '2025-05-05 12:00:00',
         level: 'error',
@@ -403,7 +395,7 @@ describe('Logger', () => {
     let mockWinstonLogger: any
 
     beforeEach(() => {
-      // Winstonロガーのモックを取得
+      // Get the mocked winston logger
       mockWinstonLogger = winston.createLogger()
       loggerInstance = Logger.configure('test')
     })
@@ -525,14 +517,14 @@ describe('Logger', () => {
     })
   })
 
-  // プロセスイベントハンドラのテスト - より単純な方法で検証
+  // Process event handler tests
   describe('process event handlers', () => {
     it('should register events for unhandledRejection and uncaughtException', () => {
-      // オリジナルのprocess.onを保持
+      // Keep the original process.on
       try {
         const eventHandlers: Record<string, Function> = {}
 
-        // process.onをモック化
+        // Mock process.on
         process.on = jest
           .fn()
           .mockImplementation((event: string, handler: Function) => {
@@ -540,12 +532,12 @@ describe('Logger', () => {
             return process
           })
 
-        // ロガーを直接インポートしてプロセスイベントを登録させる
+        // Import the logger so that it registers the process event handlers
         jest.isolateModules(() => {
           require('../logger')
         })
 
-        // イベントが登録されたことを確認
+        // Verify that the events were registered
         expect(process.on).toHaveBeenCalledWith(
           'unhandledRejection',
           expect.any(Function)
@@ -557,24 +549,24 @@ describe('Logger', () => {
         expect(eventHandlers).toHaveProperty('unhandledRejection')
         expect(eventHandlers).toHaveProperty('uncaughtException')
 
-        // イベントハンドラの実行をテスト
+        // Run the event handlers
         const mockError = new Error('Test error')
 
-        // unhandledRejectionハンドラをテスト
+        // unhandledRejection handler
         eventHandlers.unhandledRejection(mockError)
         expect(winston.createLogger().error).toHaveBeenCalledWith(
           'unhandledRejection',
           mockError
         )
 
-        // uncaughtExceptionハンドラをテスト
+        // uncaughtException handler
         eventHandlers.uncaughtException(mockError)
         expect(winston.createLogger().error).toHaveBeenCalledWith(
           'uncaughtException',
           mockError
         )
       } finally {
-        // 元に戻す
+        // Restore
         process.on = originalProcessOn
       }
     })

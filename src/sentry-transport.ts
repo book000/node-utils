@@ -6,9 +6,9 @@ import {
 } from './sentry/sentry-client'
 
 /**
- * スタックから node_modules / Node 内部を除いた最初のフレームを返す
+ * Returns the first stack frame that is neither in node_modules nor in Node internals.
  *
- * デプロイ先のパスや行番号の変化でグループが割れないよう、関数名とファイル名だけにする
+ * Only the function and file names are kept, so that deploy paths and line numbers do not split issue groups.
  */
 function firstAppFrame(error: Error): string | undefined {
   const frame = error.stack
@@ -24,7 +24,7 @@ function firstAppFrame(error: Error): string | undefined {
     return undefined
   }
 
-  // 入力はスタック文字列で長さが不定なため、正規表現ではなく文字列操作で分解する (ReDoS 回避)
+  // The input is a stack string of arbitrary length, so split it with string operations instead of a regular expression (avoids ReDoS)
   const open = frame.endsWith(')') ? frame.lastIndexOf('(') : -1
   const prefix = open === -1 ? 'at ' : frame.slice(0, open)
   const location = open === -1 ? frame.slice(3) : frame.slice(open + 1, -1)
@@ -39,33 +39,33 @@ function firstAppFrame(error: Error): string | undefined {
   return prefix + (hasPosition ? parts.slice(0, -2).join(':') : file)
 }
 
-/** winston へ渡す際に SentryMeta を格納する予約キー */
+/** Reserved key under which SentryMeta is passed to winston */
 const SENTRY_META_KEY = 'sentryMeta'
 
 /**
- * Logger が生成した meta 引数の識別用
+ * Identifies meta arguments created by Logger.
  *
- * エラーオブジェクトなど利用者データが同名キーを持っていても meta と誤認しないよう、
- * キー名ではなくこの集合への所属で判定する
+ * Membership in this set, not the key name, decides what counts as meta,
+ * so user data such as an error object with a same-named key is never mistaken for meta.
  */
 const metaArgs = new WeakSet<object>()
 
 /**
- * 報告済みの Error インスタンスとそのレベル
+ * Error instances already reported, with the levels they were reported at.
  *
- * Logger は category ごとにトランスポートを生成するが、unhandledRejection フックは
- * 'main' カテゴリで記録するため、トランスポート間で共有する
+ * Logger creates a transport per category while the unhandledRejection hook logs under the 'main' category,
+ * so this is shared between transports.
  */
 const reportedErrors = new WeakMap<Error, Set<string>>()
 
 /**
- * SentryMeta を winston の末尾引数 (splat) として渡す形に包む
+ * Wraps SentryMeta as a trailing winston argument (splat).
  *
- * info のトップレベルへ展開されないため、コンソール・ファイル出力には現れない。
- * 呼び出し側は error 位置を必ず埋めてから、この戻り値を最後の引数に渡すこと
+ * It is not spread into the top level of info, so it never appears in console or file output.
+ * The caller must fill the error position and then pass this return value as the last argument.
  *
- * @param meta Sentry への送信を制御するメタ情報
- * @returns winston へ渡す引数
+ * @param meta Metadata that controls what is sent to Sentry
+ * @returns The argument to pass to winston
  */
 export function toSentryMetaArg(meta: SentryMeta): Record<string, SentryMeta> {
   const arg = { [SENTRY_META_KEY]: meta }
@@ -74,21 +74,21 @@ export function toSentryMetaArg(meta: SentryMeta): Record<string, SentryMeta> {
 }
 
 /**
- * Sentry (GlitchTip) への送信を呼び出し側から制御するためのメタ情報
+ * Metadata that lets the caller control what is sent to Sentry (GlitchTip).
  */
 export interface SentryMeta {
-  /** false を指定すると、このログを Sentry へ送らない */
+  /** When false, this log is not sent to Sentry */
   sentry?: boolean
-  /** 自動生成の fingerprint を置き換える。'{{ default }}' トークンも使用可能 */
+  /** Replaces the automatic fingerprint. The '{{ default }}' token can be used */
   fingerprint?: string[]
-  /** イベントへ付与するタグ (値は文字列のみ) */
+  /** Tags to attach to the event (string values only) */
   tags?: Record<string, string>
-  /** イベントへ付与する追加情報。機密情報を含めないこと */
+  /** Extra data to attach to the event. Do not include secrets */
   extra?: Record<string, unknown>
 }
 
 /**
- * 実行時に SentryMeta を検証し、型の合わない項目は無視した値を返す
+ * Validates SentryMeta at runtime and returns a value with mistyped items dropped.
  */
 function sanitizeMeta(raw: unknown): SentryMeta {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
@@ -114,7 +114,7 @@ function sanitizeMeta(raw: unknown): SentryMeta {
 }
 
 /**
- * SentryTransport の初期化オプション
+ * Options of SentryTransport.
  */
 export interface SentryTransportOptions
   extends TransportStream.TransportStreamOptions {
@@ -123,9 +123,9 @@ export interface SentryTransportOptions
 }
 
 /**
- * winston の error/warn ログを Sentry (GlitchTip 互換) へ転送するトランスポート
+ * Winston transport that forwards error/warn logs to Sentry (GlitchTip compatible).
  *
- * SENTRY_DSN が設定されている場合のみ Logger.configure() から transports 配列に追加される
+ * Logger.configure() adds it to the transports only when SENTRY_DSN is set.
  */
 export class SentryTransport extends TransportStream {
   constructor(options: SentryTransportOptions) {
@@ -134,10 +134,10 @@ export class SentryTransport extends TransportStream {
   }
 
   /**
-   * winston から渡されたログ情報を Sentry へ転送する
+   * Forwards the log info passed by winston to Sentry.
    *
-   * @param info winston が渡すログ情報
-   * @param callback 転送処理完了後に呼び出すコールバック
+   * @param info Log info passed by winston
+   * @param callback Callback to call when forwarding has finished
    */
   log(info: Record<string, unknown>, callback: () => void): void {
     setImmediate(() => this.emit('logged', info))
@@ -149,17 +149,17 @@ export class SentryTransport extends TransportStream {
       try {
         captured = this.capture(level, messageText, info, rest.stack)
       } catch (error) {
-        // meta.extra の getter などが投げても callback を呼べず winston が停止しないようにする
+        // Keep winston from stalling when something such as a getter on meta.extra throws before callback is called
         this.emit('error', error)
       }
     }
 
     if (level === 'error' && captured) {
-      // 短命なバッチ系プロセスがこの直後に終了しても送信が完了するよう待ち合わせる
+      // Wait for the flush so the event is delivered even if a short-lived batch process exits right after
       Sentry.flush(2000)
         .catch((error: unknown) => {
-          // flush 失敗を握りつぶすと GlitchTip 側の障害に気づけなくなるため、
-          // winston の 'error' イベントとして通知する (transport 自体は例外を投げない)
+          // Swallowing a flush failure would hide GlitchTip-side problems,
+          // so report it as a winston 'error' event (the transport itself does not throw)
           this.emit('error', error)
         })
         .finally(() => {
@@ -171,17 +171,18 @@ export class SentryTransport extends TransportStream {
   }
 
   /**
-   * ログを Sentry へ送る
+   * Sends the log to Sentry.
    *
-   * winston は `logger.error(msg, err)` のとき message に `msg + err.message` を連結するため、
-   * そのまま送るとタイトルがログメッセージ込みで変動しグルーピングが崩れる。
-   * 元の Error (splat から取得。なければ stack から再構築) を送り、ログメッセージはタグへ、グルーピングは fingerprint で固定する。
-   * message のみのイベントは captureMessage だと合成スタックが付きタイトルが変わるため captureEvent で送る
+   * For `logger.error(msg, err)`, winston concatenates `msg + err.message` into message,
+   * so sending it as is would make the title vary with the log message and break grouping.
+   * Instead, the original Error (taken from the splat, or rebuilt from the stack) is sent,
+   * the log message goes into a tag, and grouping is pinned by the fingerprint.
+   * Message-only events are sent with captureEvent because captureMessage would add a synthetic stack and change the title.
    *
-   * SentryMeta の fingerprint / tags / extra を反映し、`sentry: false` のログと、
-   * 同じレベルで報告済みの Error インスタンスは送らない
+   * The fingerprint / tags / extra of SentryMeta are applied.
+   * Logs with `sentry: false`, and Error instances already reported at the same level, are not sent.
    *
-   * @returns 送信した場合は true、スキップした場合は false
+   * @returns true if the log was sent, false if it was skipped
    */
   private capture(
     level: 'error' | 'warn',
@@ -193,10 +194,10 @@ export class SentryTransport extends TransportStream {
     if (meta.sentry === false) return false
 
     const original = this.findError(info)
-    // 同一インスタンスを同じレベルで再度ログした場合 (再 throw 後のフック等) は二重に報告しない
+    // Do not report twice when the same instance is logged again at the same level (e.g. by a hook after a rethrow)
     if (original && reportedErrors.get(original)?.has(level)) return false
-    // Sentry は同一 Error インスタンスの 2 回目以降の送信を捨てるため、
-    // 元の Error は複製して送る (同じ Error を warn → error と連続してログしても欠落しない)
+    // Sentry drops second and later sends of the same Error instance,
+    // so send a copy of the original (logging the same Error as warn and then error loses neither)
     const error = original
       ? this.toError(original.message, original.stack ?? '', original.name)
       : typeof stack === 'string'
@@ -212,7 +213,7 @@ export class SentryTransport extends TransportStream {
       for (const [key, value] of extraEntries) {
         scope.setExtra(key, value)
       }
-      // log.message は呼び出し側のタグで上書きされないよう最後に設定する
+      // Set log.message last so that the caller's tags cannot override it
       scope.setTag('log.message', message)
       if (error) {
         scope.setFingerprint(
@@ -224,12 +225,12 @@ export class SentryTransport extends TransportStream {
         )
         Sentry.captureException(error)
       } else {
-        // メッセージの可変部は正規化せず、そのまま fingerprint に使う
+        // The variable part of the message is not normalized and is used in the fingerprint as is
         scope.setFingerprint(meta.fingerprint ?? [level, message])
         Sentry.captureEvent({ message, level: toSeverityLevel(level) })
       }
     })
-    // 送信処理が成功してから報告済みにする (失敗時に以降の報告まで失われないように)
+    // Mark as reported only after sending succeeded (so that a failure does not suppress later reports)
     if (original) {
       const levels = reportedErrors.get(original) ?? new Set<string>()
       levels.add(level)
@@ -239,7 +240,7 @@ export class SentryTransport extends TransportStream {
   }
 
   /**
-   * winston が保持する引数 (splat) から SentryMeta を取り出す
+   * Extracts SentryMeta from the arguments (splat) held by winston.
    */
   private findMeta(info: Record<string, unknown>): SentryMeta {
     const splat = (info as Record<symbol, unknown>)[Symbol.for('splat')]
@@ -253,7 +254,7 @@ export class SentryTransport extends TransportStream {
   }
 
   /**
-   * winston が保持する引数 (splat) から元の Error を取り出す
+   * Extracts the original Error from the arguments (splat) held by winston.
    */
   private findError(info: Record<string, unknown>): Error | undefined {
     const splat = (info as Record<symbol, unknown>)[Symbol.for('splat')]
@@ -268,8 +269,8 @@ export class SentryTransport extends TransportStream {
 
   private toError(message: string, stack: string, errorName?: string): Error {
     const error = new Error(message)
-    // unicorn/no-error-property-assignment はビルトイン Error への直接代入を禁止するため、
-    // winston から受け取った stack 文字列・エラー名を Sentry へそのまま渡すには defineProperty を使う
+    // unicorn/no-error-property-assignment forbids assigning to built-in Error properties directly,
+    // so use defineProperty to pass the stack string and error name received from winston to Sentry as is
     const firstLine = stack.split('\n', 1)[0]
     const name =
       errorName ??

@@ -5,14 +5,14 @@ import {
 } from './sentry/sentry-client'
 
 /**
- * Sentry (GlitchTip 互換) への明示的なエラー送信ラッパー
+ * Opt-in wrapper for explicitly sending errors to Sentry (GlitchTip compatible).
  *
- * Logger を経由しない箇所で、タグやコンテキスト情報を付けて明示的にエラーを送信したい場合に
- * 使うオプトイン API。利用側で configure() の呼び出しが必要で、呼ばなければ何も起きない
+ * Use it where the error does not go through Logger and you want to attach extra context.
+ * It does nothing unless Sentry has been initialized, either by configure() or by a Logger created with SENTRY_DSN set.
  */
 export class ErrorReporter {
   /**
-   * Sentry SDK を初期化する。SENTRY_DSN が未設定なら no-op
+   * Initializes the Sentry SDK. No-op when SENTRY_DSN is unset.
    */
   public static configure(): void {
     if (!process.env.SENTRY_DSN) return
@@ -23,12 +23,12 @@ export class ErrorReporter {
   }
 
   /**
-   * 例外を Sentry へ送信する
+   * Sends an exception to Sentry.
    *
-   * configure() が呼ばれていない、または SENTRY_DSN 未設定の場合は no-op
+   * No-op when Sentry has not been initialized (configure() not called and no Logger created with SENTRY_DSN set).
    *
-   * @param error 送信する例外
-   * @param context 付加するタグ・コンテキスト情報
+   * @param error Exception to send
+   * @param context Additional context, attached to the event as `extra`
    */
   public static captureException(
     error: Error,

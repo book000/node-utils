@@ -22,7 +22,7 @@ Also see [src/examples/](src/examples/) directory.
 
 ### Logger with winston
 
-Easily initialise winston logger wrapper.
+A winston logger wrapper. It logs to the console and to daily-rotated files, and timestamps are formatted as `YYYY-MM-DD HH:mm:ss.SSS` in the timezone given by `TZ` (default `Asia/Tokyo`).
 
 ```typescript
 import { Logger } from '@book000/node-utils'
@@ -35,9 +35,24 @@ function main() {
 main()
 ```
 
+`Logger.configure(category)` returns the same instance for the same category, so settings are read only on the first call for each category. Use a fixed, low-cardinality value (a module or class name) as the category. Call `Logger.closeAll()` to close every cached logger, for example on shutdown.
+
+| Environment variable | Default | Description |
+|---|---|---|
+| `LOG_LEVEL` | `info` | Console log level |
+| `LOG_FILE_LEVEL` | `info` | File log level |
+| `LOG_DIR` | `logs` | Log directory (`/tmp/logs` when `VERCEL` is set, regardless of `LOG_DIR`) |
+| `LOG_FILE_MAX_AGE` | `30d` | Maximum retention of log files |
+| `LOG_FILE_FORMAT` | `text` | `text` (`.log` files) or `ndjson` (`.ndjson` files) |
+| `TZ` | `Asia/Tokyo` | Timezone of the timestamps (unknown values fall back to `Asia/Tokyo`) |
+
+Importing `Logger` also registers `unhandledRejection` and `uncaughtException` handlers that log through `Logger.configure('main')`.
+
 ### JSONC Configuration framework
 
-Framework class to manage JSONC format configuration file.
+Framework class to manage a configuration file in JSONC format (comments and trailing commas are allowed).
+
+The constructor takes an optional fallback `path`. The first existing file among the `CONFIG_PATH` environment variable, the `CONFIG_FILE` environment variable and `path` is used, and an `Error` is thrown if none exists. In the example below, set `CONFIG_PATH` or `CONFIG_FILE` to the configuration file path. `load()` reads the file, `validate()` runs the rules from `validates()`, and `getValidateFailures()` returns the names of the failed rules.
 
 ```typescript
 import { ConfigFramework } from '@book000/node-utils'
@@ -82,7 +97,7 @@ main()
 ```typescript
 import { Logger } from '@book000/node-utils'
 
-// SENTRY_DSN が設定されていれば、以下の error() 呼び出しは自動的に GlitchTip へ転送される
+// When SENTRY_DSN is set, the error() call below is forwarded to GlitchTip automatically
 const logger = Logger.configure('main')
 logger.error('Something went wrong', new Error('boom'))
 ```
@@ -111,7 +126,7 @@ Invalid values (a non-string-array `fingerprint`, non-string tag values) are ign
 | `SENTRY_LOG_LEVEL` | No | `warn` | Minimum Winston log level forwarded by `SentryTransport` |
 | `SENTRY_RELEASE` | No | auto-detected `<name>@<version>` from the consuming app's `package.json` | Overrides the auto-detected `release` tag |
 
-For explicit, opt-in error reporting outside of `Logger` (e.g. attaching custom tags), use `ErrorReporter`:
+For explicit, opt-in error reporting outside of `Logger` (e.g. attaching extra context), use `ErrorReporter`. It does nothing unless `SENTRY_DSN` is set and Sentry has been initialised, either by `ErrorReporter.configure()` or by a `Logger` created with `SENTRY_DSN` set. The second argument of `captureException()` is attached to the event as `extra`:
 
 ```typescript
 import { ErrorReporter } from '@book000/node-utils'
@@ -122,7 +137,7 @@ ErrorReporter.captureException(new Error('boom'), { userId: '123' })
 
 ### Send message to Discord
 
-You can send messages to the Discord using the Discord Bot or the Discord Webhook.
+You can send messages to Discord using a Discord Bot (`token` and `channelId`) or a Discord Webhook (`webhookUrl`). Messages can contain `content`, `embeds`, link buttons (`components`) or a `file`. `sendMessage()` returns the ID of the sent message (`undefined` when a webhook responds with 204), and `editMessage(messageId, message)` edits a message sent through the same bot channel or webhook.
 
 ```typescript
 import { Discord, DiscordMessageFlag } from '@book000/node-utils'

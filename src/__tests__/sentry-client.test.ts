@@ -1,10 +1,10 @@
 import type * as SentryClientModule from '../sentry/sentry-client'
 
-// jest.resetModules() は '@sentry/node' の mock factory も再実行するため、
-// factory 内で毎回 jest.fn() を new すると、require し直した sentry-client が
-// 実際に呼ぶインスタンスとテスト側で参照するインスタンスが食い違ってしまう。
-// factory の外側で定義した mock 関数を共有することで同一性を保つ
-// (babel-plugin-jest-hoist の制約上、ファクトリ内で参照する変数名は "mock" 始まりにする必要がある)
+// jest.resetModules() also re-runs the mock factory of '@sentry/node'.
+// If the factory created a new jest.fn() each time, the instance that the re-required sentry-client calls
+// would differ from the instance the tests inspect.
+// Sharing mock functions defined outside the factory keeps them identical.
+// (babel-plugin-jest-hoist requires variables referenced in the factory to start with "mock".)
 const mockSentryInit = jest.fn()
 
 jest.mock('@sentry/node', () => ({
@@ -16,10 +16,10 @@ jest.mock('../sentry/sentry-release', () => ({
 }))
 
 /**
- * jest.resetModules() 後に sentry-client を再 require し、モジュールスコープの
- * initialized フラグがリセットされた状態のモジュールを取得する
+ * Re-requires sentry-client after jest.resetModules() to get a module whose module-scope
+ * initialized flag has been reset.
  *
- * @returns 再 require した sentry-client モジュール
+ * @returns The re-required sentry-client module
  */
 function freshSentryClient(): typeof SentryClientModule {
   // eslint-disable-next-line unicorn/prefer-module, @typescript-eslint/no-require-imports

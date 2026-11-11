@@ -125,37 +125,36 @@ export const DiscordMessageFlag = {
   SuppressNotifications: 1 << 12,
 } as const
 
-/** メッセージ送信 (Create Message / Execute Webhook) で指定できる flags */
+/** Flags accepted when sending a message (Create Message / Execute Webhook) */
 const SEND_ALLOWED_FLAGS =
   DiscordMessageFlag.SuppressEmbeds | DiscordMessageFlag.SuppressNotifications
 
 /**
- * メッセージ編集 (Edit Message / Edit Webhook Message) で変更できる flags
+ * Flags that can be changed when editing a message (Edit Message / Edit Webhook Message).
  *
- * Discord API の仕様上、編集で設定・解除できるのは `SuppressEmbeds` のみ。
+ * Per the Discord API, only `SuppressEmbeds` can be set or unset by an edit.
  */
 const EDIT_CHANGEABLE_FLAGS = DiscordMessageFlag.SuppressEmbeds
 
 /**
- * メッセージ編集で指定できる flags
+ * Flags accepted when editing a message.
  *
- * Discord API は flags を編集する際に、既存の flag も含めて指定することを求めている。
- * そのため、変更できる flag (`EDIT_CHANGEABLE_FLAGS`) に加えて、変更はできないが
- * 保持のために指定が必要な flag (`SuppressNotifications` など、送信時に指定できる flag) も受理する。
- * 変更できない flag は Discord 側で無視される。
+ * The Discord API requires the existing flags to be included when editing flags.
+ * So in addition to the changeable flags (`EDIT_CHANGEABLE_FLAGS`), this also accepts flags that cannot be changed
+ * but must be passed to keep them (the flags accepted on send, such as `SuppressNotifications`).
+ * Flags that cannot be changed are ignored by Discord.
  */
 const EDIT_ALLOWED_FLAGS = EDIT_CHANGEABLE_FLAGS | SEND_ALLOWED_FLAGS
 
 /**
- * メッセージ flags。他のメッセージ種別と組み合わせて指定できる。
+ * Message flags. They can be combined with the other message types.
  *
- * - 送信時は `SuppressEmbeds` と `SuppressNotifications` を指定できる
- * - 編集時に設定・解除できるのは `SuppressEmbeds` のみ (Discord API の仕様)。
- *   flags を編集する際は既存の flag も含めて指定する必要があるため、
- *   `SuppressNotifications` 付きで送信したメッセージに `SuppressEmbeds` を追加する場合は
- *   両方を指定する (`SuppressEmbeds | SuppressNotifications`)。
- *   `SuppressNotifications` 自体は編集で変更できず、Discord 側で無視される
- * - 上記以外の flag を含む場合は Error を投げる
+ * - On send, `SuppressEmbeds` and `SuppressNotifications` can be specified
+ * - On edit, only `SuppressEmbeds` can be set or unset (Discord API restriction).
+ *   Existing flags must be included when editing flags, so to add `SuppressEmbeds` to a message
+ *   sent with `SuppressNotifications`, pass both (`SuppressEmbeds | SuppressNotifications`).
+ *   `SuppressNotifications` itself cannot be changed by an edit and is ignored by Discord
+ * - An Error is thrown if any other flag is included
  */
 interface DiscordMessageFlags {
   flags: number
@@ -168,14 +167,20 @@ export type DiscordMessage =
   | DiscordComponentMessage
   | DiscordMessageFlags
 
+/**
+ * Sends and edits Discord messages through a Bot or a Webhook.
+ */
 export class Discord {
   private options: DiscordOptions
 
+  /**
+   * Acts as a Bot when both `token` and `channelId` are non-empty strings,
+   * otherwise as a Webhook when `webhookUrl` is a non-empty string.
+   *
+   * @param options Bot options (`token` and `channelId`) or Webhook options (`webhookUrl`)
+   * @throws If neither a valid Bot nor a valid Webhook configuration is given
+   */
   constructor(options: DiscordOptions) {
-    // token があれば Bot として動作する
-    // webhookUrl と channelId があれば Webhook として動作する
-    // どちらもなければエラーを投げる
-
     if (
       this.isDiscordBotOptions(options) ||
       this.isDiscordWebhookOptions(options)
@@ -186,6 +191,12 @@ export class Discord {
     }
   }
 
+  /**
+   * Validation rules for {@link ConfigFramework.validates}.
+   *
+   * Note that the rules cannot all pass for any single configuration:
+   * a Bot configuration fails `webhookUrl is valid`, and a Webhook configuration fails `token is valid`.
+   */
   public static get validations(): Record<string, (options: any) => boolean> {
     return {
       'token or webhookUrl and channelId': (options: any) =>
@@ -203,6 +214,13 @@ export class Discord {
     }
   }
 
+  /**
+   * Sends a message.
+   *
+   * @param message Message text, or a message object (content, embeds, components, file and/or flags)
+   * @returns The ID of the sent message. undefined when a Webhook responds with 204
+   * @throws If the flags are invalid or the Discord API returns an error status
+   */
   public async sendMessage(
     message: string | DiscordMessage
   ): Promise<string | undefined> {
@@ -214,11 +232,11 @@ export class Discord {
   }
 
   /**
-   * 送信・編集 API に渡す FormData を生成する
+   * Builds the FormData passed to the send/edit API.
    *
-   * @param message 送信・編集するメッセージ
-   * @param allowedFlags API が受理する flags のビットマスク
-   * @returns payload_json (と添付ファイル) を含む FormData
+   * @param message Message to send or edit
+   * @param allowedFlags Bit mask of the flags the API accepts
+   * @returns FormData containing payload_json (and the attached file)
    */
   private buildFormData(
     message: string | DiscordMessage,
@@ -258,15 +276,15 @@ export class Discord {
   }
 
   /**
-   * flags が API の制約に沿っているか検証する
+   * Validates that flags satisfy the API constraints.
    *
-   * @param flags 検証する flags
-   * @param allowedFlags API が受理する flags のビットマスク
-   * @throws flags が 0 以上の整数でない場合、または受理されない flag を含む場合
+   * @param flags Flags to validate
+   * @param allowedFlags Bit mask of the flags the API accepts
+   * @throws If flags is not a non-negative integer, or contains a flag that is not accepted
    */
   private validateFlags(flags: number, allowedFlags: number): void {
-    // JavaScript のビット演算子は 32bit 符号付き整数で動作する (0x7f_ff_ff_ff はその最大値)。
-    // 上限を超える値は 32bit に丸められて検証をすり抜けるため、ビット演算の前に拒否する
+    // JavaScript bitwise operators work on 32-bit signed integers (0x7f_ff_ff_ff is the maximum).
+    // Values above the limit would be truncated to 32 bits and slip through the check, so reject them before any bit operation
     if (!Number.isSafeInteger(flags) || flags < 0 || flags > 0x7f_ff_ff_ff) {
       throw new Error(`Invalid flags: ${flags} must be a non-negative integer`)
     }
@@ -331,6 +349,13 @@ export class Discord {
     return data.id
   }
 
+  /**
+   * Edits a message that was sent through the same Bot channel or Webhook.
+   *
+   * @param messageId ID of the message to edit
+   * @param message New message text, or a message object. Flags allowed on edit are described in the flags section of the README
+   * @throws If messageId is invalid, the flags are invalid, or the Discord API returns an error status
+   */
   public async editMessage(
     messageId: string,
     message: string | DiscordMessage
@@ -343,15 +368,15 @@ export class Discord {
   }
 
   /**
-   * メッセージ ID を URL のパスセグメントとして安全な形にする
+   * Makes a message ID safe to use as a URL path segment.
    *
-   * @param messageId 編集するメッセージの ID
-   * @returns エンコード済みのメッセージ ID
-   * @throws メッセージ ID が空、または `.` / `..` の場合
+   * @param messageId ID of the message to edit
+   * @returns The encoded message ID
+   * @throws If the message ID is empty, `.` or `..`
    */
   private encodeMessageId(messageId: string): string {
     const encoded = encodeURIComponent(messageId)
-    // `.` と `..` は URL の解決時にパスの階層として扱われ、/messages/ の外を指してしまう
+    // `.` and `..` are treated as path levels when the URL is resolved and would point outside /messages/
     if (['', '.', '..'].includes(encoded)) {
       throw new Error(`Invalid messageId: ${messageId}`)
     }
@@ -390,8 +415,8 @@ export class Discord {
       throw new Error('Invalid webhook options')
     }
 
-    // href に連結するとクエリ文字列の後ろにパスが付いてしまう (?wait=true/messages/<id>) ため、
-    // pathname に追加する。編集 API は wait を使わないので付与しない
+    // Appending to href would put the path after the query string (?wait=true/messages/<id>),
+    // so append to pathname. The edit API does not use wait, so it is not added
     const urlObject = new URL(this.options.webhookUrl)
     urlObject.pathname = `${urlObject.pathname.replace(/\/$/, '')}/messages/${this.encodeMessageId(messageId)}`
 

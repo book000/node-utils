@@ -28,11 +28,11 @@ jest.mock('../sentry/sentry-client', () => ({
 }))
 
 /**
- * 指定したスタック文字列を持つ Error を作る
+ * Creates an Error with the given stack string.
  *
- * @param message Error のメッセージ
- * @param stack 差し替えるスタック文字列
- * @returns スタックを差し替えた Error
+ * @param message Error message
+ * @param stack Stack string to substitute
+ * @returns An Error with the substituted stack
  */
 function withStack(message: string, stack: string): Error {
   const error = new Error(message)
@@ -40,7 +40,7 @@ function withStack(message: string, stack: string): Error {
   return error
 }
 
-/** winston は error レベルの callback (flush 待ち) が返るまで次のログを保留するため、次のログ前に待つ */
+/** winston holds the next log until the error-level callback (flush wait) returns, so wait before the next log */
 const settle = (): Promise<void> =>
   new Promise((resolve) => setImmediate(resolve))
 
@@ -133,7 +133,7 @@ describe('SentryTransport', () => {
     })
 
     describe('SentryMeta', () => {
-      // 不正な値を渡すテストのため型を緩める
+      // Loosen the type because this test passes invalid values
       const meta = (m: Record<string, unknown>): Record<string, unknown> =>
         toSentryMetaArg(m)
 
@@ -272,7 +272,7 @@ describe('SentryTransport', () => {
         const logger = createLogger()
         logger.error('failed', error)
         await settle()
-        // unhandledRejection フック相当
+        // Equivalent to the unhandledRejection hook
         logger.error('unhandledRejection', error)
         await settle()
 

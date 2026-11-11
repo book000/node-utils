@@ -38,7 +38,6 @@ describe('ConfigFramework', () => {
   )
 
   beforeAll(() => {
-    // 有効な設定ファイルを作成
     fs.writeFileSync(
       validConfigPath,
       JSON.stringify({
@@ -51,22 +50,22 @@ describe('ConfigFramework', () => {
       })
     )
 
-    // 無効な設定ファイル（検証エラー）を作成
+    // Create a config file that fails validation
     fs.writeFileSync(
       invalidConfigPath,
       JSON.stringify({
         name: 'test',
-        value: -5, // バリデーションエラー: value > 0
-        flag: 'invalid', // バリデーションエラー: flag は boolean であるべき
+        value: -5, // fails validation: value must be > 0
+        flag: 'invalid', // fails validation: flag must be a boolean
       })
     )
 
-    // 無効なJSON形式のファイルを作成
+    // Create a file that is not valid JSON
     fs.writeFileSync(invalidJsonConfigPath, '{ invalid json')
   })
 
   afterAll(() => {
-    // テスト終了後にテンポラリファイルを削除
+    // Remove the temporary files after the tests
     fs.rmSync(temporaryDirectory, { recursive: true, force: true })
   })
 
@@ -127,7 +126,7 @@ describe('ConfigFramework', () => {
 
     it('should load but resulting in incomplete parsing when JSON is invalid', () => {
       const config = new TestConfigFramework(invalidJsonConfigPath)
-      // jsonc-parser はエラーを投げず、パース可能な部分だけをパースする
+      // jsonc-parser does not throw; it parses only the parsable part
       expect(() => {
         config.load()
       }).not.toThrow()
