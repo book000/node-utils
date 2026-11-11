@@ -69,8 +69,8 @@ jobs:
 
       - name: 📝 Update package.json version
         run: |
-          # pnpm version を rm -rfv src/examples より前に実行することで、
-          # ワーキングツリーが clean な状態を保ちチェックをパスさせる
+          # Run pnpm version before rm -rfv src/examples so that
+          # the working tree is still clean and the check passes
           pnpm version --no-git-tag-version ${{ steps.tag-version.outputs.new_version }}
 
       - name: 🗑️ Remove examples directory

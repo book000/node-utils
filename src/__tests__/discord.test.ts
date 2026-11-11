@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Discord, DiscordMessageFlag } from '../discord'
 
-// global.fetch をモック化
+// Mock global.fetch
 const mockFetch = jest.fn()
 
 globalThis.fetch = mockFetch
@@ -16,19 +16,18 @@ function createMockResponse(status: number, data: unknown): Response {
   } as unknown as Response
 }
 
-// FormDataのメソッドをスパイ
+// Spy on FormData methods
 const originalFormDataAppend = FormData.prototype.append
 FormData.prototype.append = jest.fn(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function (this: FormData, _field: string, _value: any, _options?: any) {
-    // 元のappendメソッドは呼び出さないが、呼び出しのみ記録
-    // TypeScript用のスタブを返す
+    // Record calls without calling the original append
     return {} as any
   }
 )
 
 /**
- * モックした FormData.append の呼び出しから payload_json を取り出す
+ * Extracts payload_json from the mocked FormData.append calls
  */
 function getPayloadJson(): Record<string, unknown> {
   const calls = (FormData.prototype.append as jest.Mock).mock.calls as [
@@ -42,7 +41,6 @@ function getPayloadJson(): Record<string, unknown> {
   return JSON.parse(call[1] as string) as Record<string, unknown>
 }
 
-// DiscordButtonStylesタイプの定数を定義（テスト用）
 const LinkStyle = 5 as const
 
 describe('Discord', () => {
@@ -52,7 +50,7 @@ describe('Discord', () => {
       createMockResponse(200, { id: 'mock-message-id' })
     )
 
-    // FormDataのモックをリセット
+    // Reset the FormData mocks
     jest.clearAllMocks()
     mockFetch.mockResolvedValue(
       createMockResponse(200, { id: 'mock-message-id' })
@@ -60,7 +58,7 @@ describe('Discord', () => {
   })
 
   afterAll(() => {
-    // テスト後にFormDataのメソッドを復元
+    // Restore the FormData methods after the tests
     FormData.prototype.append = originalFormDataAppend
   })
 
@@ -135,7 +133,7 @@ describe('Discord', () => {
       expect(mockFetch).toHaveBeenCalled()
       expect(messageId).toBe('mock-message-id')
 
-      // formDataのチェックは難しいので、URLとヘッダーのみ確認
+      // Checking formData is hard, so only verify the URL and headers
       const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
       expect(call[0]).toContain('/channels/test-channel/messages')
       expect(call[1]?.headers).toHaveProperty('Authorization', 'Bot test-token')
@@ -165,7 +163,7 @@ describe('Discord', () => {
         token: 'test-token',
         channelId: 'test-channel',
       })
-      // as any でキャストしてテストする
+      // Cast with as any to test invalid input
       const components = [
         {
           type: 1,
@@ -192,7 +190,6 @@ describe('Discord', () => {
         channelId: 'test-channel',
       })
 
-      // ダミーファイルデータの作成
       const file = {
         name: 'test.txt',
         file: new ArrayBuffer(10),
@@ -215,7 +212,6 @@ describe('Discord', () => {
         channelId: 'test-channel',
       })
 
-      // ダミーファイルデータの作成（スポイラー付き）
       const file = {
         name: 'test.txt',
         file: new ArrayBuffer(10),
@@ -363,7 +359,7 @@ describe('Discord', () => {
 
       const messageId = await discord.sendMessage('Test webhook message')
 
-      // 204の場合はidはundefinedになる
+      // The id is undefined for a 204 response
       expect(messageId).toBeUndefined()
     })
 
@@ -403,8 +399,8 @@ describe('Discord', () => {
         webhookUrl: 'https://discord.com/api/webhooks/123/abc',
       })
 
-      // sendMessageを使うと内部的にisDiscordBotOptionsで判定されて
-      // sendWebhookにリダイレクトされるため、fetchをモックして間接的にテスト
+      // sendMessage decides internally with isDiscordBotOptions
+      // and routes to sendWebhook, so test indirectly by mocking fetch
       await expect(discord.sendMessage('Test message')).rejects.toThrow()
     })
 
@@ -487,7 +483,7 @@ describe('Discord', () => {
         channelId: 'test-channel',
       })
 
-      // SuppressNotifications 付きで送信したメッセージに SuppressEmbeds を追加する
+      // Add SuppressEmbeds to a message that was sent with SuppressNotifications
       await discord.editMessage('message-id', {
         content: 'Updated message',
         flags:
@@ -556,7 +552,6 @@ describe('Discord', () => {
         channelId: 'test-channel',
       })
 
-      // ダミーファイルデータ
       const file = {
         name: 'updated.txt',
         file: new ArrayBuffer(10),
@@ -665,7 +660,7 @@ describe('Discord', () => {
 
       await discord.editMessage('message-id', 'Test webhook message')
 
-      // 正常に完了するはず
+      // Should complete normally
       expect(mockFetch).toHaveBeenCalled()
     })
 
@@ -727,8 +722,8 @@ describe('Discord', () => {
   })
 
   describe('internal methods', () => {
-    // これらのテストはプライベートメソッドをテストするため、リフレクションなどを使わず
-    // 間接的に挙動を確認しています
+    // These tests cover private methods, so verify their behavior
+    // indirectly instead of using reflection
 
     it('should identify valid bot options', async () => {
       const discord = new Discord({
@@ -737,7 +732,7 @@ describe('Discord', () => {
       })
       await discord.sendMessage('Test message')
 
-      // Bot APIのURLが呼ばれていることを確認
+      // Verify that the Bot API URL was called
       const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
       expect(call[0]).toContain('/channels/test-channel/messages')
     })
@@ -748,7 +743,7 @@ describe('Discord', () => {
       })
       await discord.sendMessage('Test message')
 
-      // Webhook APIのURLが呼ばれていることを確認
+      // Verify that the Webhook API URL was called
       const call = mockFetch.mock.calls[0] as [string, RequestInit | undefined]
       expect(call[0]).toContain('https://discord.com/api/webhooks/123/abc')
     })

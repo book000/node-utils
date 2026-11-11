@@ -11,7 +11,8 @@ import {
 import { resetSentryInitialized } from './sentry/sentry-client'
 
 /**
- * ロガーラッパークラス
+ * Formats the current time as `YYYY-MM-DD HH:mm:ss.SSS` in the `TZ` environment variable's timezone.
+ * Falls back to Asia/Tokyo when `TZ` is unset or not a known timezone.
  */
 const getTimestampFormatter = (): string => {
   const timezone =
@@ -23,6 +24,12 @@ const getTimestampFormatter = (): string => {
   return zonedTime.format(format)
 }
 
+/**
+ * Logger wrapper around winston.
+ *
+ * Create instances with {@link Logger.configure}.
+ * Writes to the console and to daily-rotated files, and forwards `warn`/`error` logs to Sentry when `SENTRY_DSN` is set.
+ */
 export class Logger {
   private static readonly cache = new Map<string, Logger>()
 
@@ -33,77 +40,79 @@ export class Logger {
   }
 
   /**
-   * デバッグログを出力する
+   * Outputs a debug log.
    *
-   * @param message メッセージ
-   * @param metadata メタデータ
+   * @param message Message
+   * @param metadata Metadata
    */
   public debug(message: string, metadata?: Record<string, unknown>): void {
     this.logger.debug(message, metadata ?? {})
   }
 
   /**
-   * 情報ログを出力する
+   * Outputs an info log.
    *
-   * @param message メッセージ
-   * @param metadata メタデータ
+   * @param message Message
+   * @param metadata Metadata
    */
   public info(message: string, metadata?: Record<string, unknown>): void {
     this.logger.info(message, metadata ?? {})
   }
 
   /**
-   * 警告ログを出力する
+   * Outputs a warning log.
    *
-   * @param message メッセージ
-   * @param error エラー
-   * @param meta Sentry への送信を制御するメタ情報 (省略時は従来どおり自動で送信する)
+   * @param message Message
+   * @param error Error
+   * @param meta Controls what is sent to Sentry (when omitted, the log is sent automatically)
    */
   public warn(message: string, error?: Error, meta?: SentryMeta): void {
     if (meta === undefined) {
       this.logger.warn(message, error)
       return
     }
-    // error 位置を必ず埋めることで、meta が info のトップレベルへ展開されず出力に漏れない
+    // Always fill the error position so that meta is not spread into the top level of info and leaked into the output
     this.logger.warn(message, error, toSentryMetaArg(meta))
   }
 
   /**
-   * エラーログを出力する
+   * Outputs an error log.
    *
-   * @param message メッセージ
-   * @param error エラー
-   * @param meta Sentry への送信を制御するメタ情報 (省略時は従来どおり自動で送信する)
+   * @param message Message
+   * @param error Error
+   * @param meta Controls what is sent to Sentry (when omitted, the log is sent automatically)
    */
   public error(message: string, error?: Error, meta?: SentryMeta): void {
     if (meta === undefined) {
       this.logger.error(message, error)
       return
     }
-    // error 位置を必ず埋めることで、meta が info のトップレベルへ展開されず出力に漏れない
+    // Always fill the error position so that meta is not spread into the top level of info and leaked into the output
     this.logger.error(message, error, toSentryMetaArg(meta))
   }
 
   /**
-   * ロガーを初期化・設定する
+   * Creates and configures a logger.
    *
-   * 同一 category に対する 2 回目以降の呼び出しでは、初回生成時のインスタンスをそのまま返す
-   * (環境変数を変更していても再生成されない)。これにより、ループや高頻度呼び出しによる
-   * ファイルディスクリプタリークを防止する。
+   * Subsequent calls with the same category return the instance created by the first call
+   * (it is not recreated even if environment variables changed). This prevents file descriptor leaks
+   * from loops or frequent calls.
    *
-   * 内部キャッシュは category ごとに自動解放されないため、ユーザー ID やリクエスト ID など
-   * 高カーディナリティな値を category に使うとキャッシュが無制限に肥大化する。category には
-   * クラス名・モジュール名など固定かつ低カーディナリティな値を指定すること。
+   * The internal cache is never evicted per category, so a high-cardinality category such as a user ID
+   * or request ID makes the cache grow without bound.
+   * Use a fixed, low-cardinality value such as a class or module name.
    *
-   * 環境変数で以下の設定が可能 (初回呼び出し時のみ反映される)
-   * - LOG_LEVEL: ログレベル (デフォルト info)
-   * - LOG_FILE_LEVEL: ファイル出力のログレベル (デフォルト info)
-   * - LOG_DIR: ログ出力先 (デフォルト logs)。Vercelで動作する場合は /tmp/logs に出力する
-   * - LOG_FILE_MAX_AGE: ログファイルの最大保存期間 (デフォルト 30d)
-   * - LOG_FILE_FORMAT: ログファイルのフォーマット (デフォルト text)
+   * The following environment variables are read (only on the first call for a category):
+   * - LOG_LEVEL: console log level (default `info`)
+   * - LOG_FILE_LEVEL: file log level (default `info`)
+   * - LOG_DIR: log directory (default `logs`). When `VERCEL` is set, `/tmp/logs` is used regardless of LOG_DIR
+   * - LOG_FILE_MAX_AGE: maximum retention of log files (default `30d`)
+   * - LOG_FILE_FORMAT: log file format, `text` (default, `.log`) or `ndjson` (`.ndjson`)
+   * - TZ: timezone of the timestamps (default `Asia/Tokyo`)
+   * - SENTRY_DSN, SENTRY_LOG_LEVEL (default `warn`), SENTRY_ENVIRONMENT: when SENTRY_DSN is set, a {@link SentryTransport} is added
    *
-   * @param category カテゴリ
-   * @returns ロガー (同一 category では既存インスタンスを再利用する)
+   * @param category Category
+   * @returns The logger (an existing instance is reused for the same category)
    */
   public static configure(category: string): Logger {
     const cached = this.cache.get(category)
@@ -216,15 +225,15 @@ export class Logger {
   }
 
   /**
-   * キャッシュされている全ての Logger を close() し、内部キャッシュをクリアする
+   * Closes every cached logger and clears the internal cache.
    *
-   * category ごとにキャッシュされた各 winston Logger (トランスポート含む) を明示的に
-   * close() してからキャッシュを破棄するため、次回の configure() 呼び出しでは
-   * category ごとに新規インスタンスが生成し直される。プロセス終了処理や、テスト間で
-   * ロガーの状態をリセットしたい場合など、キャッシュ済みロガーのファイルディスクリプタを
-   * まとめて解放したいときに使用する。SENTRY_DSN 設定時は Sentry.close() も呼び出し、
-   * 未送信のイベントをプロセス終了前に送信し切る。呼び出し後も Logger.configure() で
-   * 再度ロガー (および Sentry) を初期化して使い続けられる。
+   * Each cached winston logger (including its transports) is explicitly closed before the cache is discarded,
+   * so the next configure() call creates a new instance per category.
+   * Use it on process shutdown, or to reset logger state between tests,
+   * when you want to release the file descriptors of all cached loggers at once.
+   * When SENTRY_DSN is set, it also starts Sentry.close() (2000 ms timeout) to flush pending events.
+   * This method is synchronous and does not wait for that promise.
+   * After the call, Logger.configure() can initialize loggers (and Sentry) again.
    */
   public static closeAll(): void {
     for (const instance of this.cache.values()) {
@@ -236,22 +245,21 @@ export class Logger {
     }
 
     Sentry.close(2000).catch((error: unknown) => {
-      // close 失敗を握りつぶすと GlitchTip 側の障害に気づけなくなるため、
-      // プロセス終了処理中の最後の手段として console.error で可視化する
+      // Swallowing a close failure would hide GlitchTip-side problems,
+      // so surface it with console.error as a last resort during process shutdown
       console.error('Failed to close Sentry client', error)
     })
     resetSentryInitialized()
   }
 
   static getTimestamp(): () => string {
-    // 'YYYY-MM-DD hh:mm:ss.SSS'
-    // Asia/Tokyo
+    // 'YYYY-MM-DD HH:mm:ss.SSS' in the TZ environment variable's timezone (default Asia/Tokyo)
     return getTimestampFormatter
   }
 }
 
-// このモジュールを import した時点で未処理の例外・rejection を自動でログ出力する設計のため、
-// トップレベルでのハンドラ登録が意図的な挙動。opt-in 化すると既存利用側の挙動が変わってしまう。
+// Importing this module deliberately registers these handlers at the top level so that unhandled exceptions
+// and rejections are logged automatically. Making it opt-in would change the behavior for existing consumers.
 // eslint-disable-next-line unicorn/no-top-level-side-effects
 process.on('unhandledRejection', (reason) => {
   const logger = Logger.configure('main')
