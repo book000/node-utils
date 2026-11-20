@@ -4,7 +4,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable unicorn/prefer-module */
-/* eslint-disable @typescript-eslint/no-unsafe-function-type */
+// Fake transports are EventEmitters because winston transports are Node streams (once/emit), not EventTargets
+/* eslint-disable unicorn/prefer-event-target */
+import { EventEmitter } from 'node:events'
 import { Logger } from '../logger'
 
 import winston from 'winston'
@@ -39,6 +41,8 @@ jest.mock('winston', () => {
     warn: jest.fn(),
     error: jest.fn(),
     close: jest.fn(),
+    end: jest.fn(),
+    transports: [],
   }
 
   return {
@@ -93,9 +97,6 @@ jest.mock('moment-timezone', () => {
 
   return mockMomentFunction
 })
-
-// For mocking process event handlers
-const originalProcessOn = process.on
 
 describe('Logger', () => {
   const originalEnvironment = process.env
@@ -519,56 +520,156 @@ describe('Logger', () => {
 
   // Process event handler tests
   describe('process event handlers', () => {
-    it('should register events for unhandledRejection and uncaughtException', () => {
-      // Keep the original process.on
+    interface MockWinstonLogger {
+      error: jest.Mock
+      end: jest.Mock
+      transports: EventEmitter[]
+    }
+
+    /**
+     * Loads a fresh logger module (the in-progress flag is module-level state)
+     * and returns the handlers it registered along with its own winston mock.
+     */
+    const loadHandlers = () => {
+      type FatalHandler = (error: unknown) => void
+      const handlers: Record<string, FatalHandler> = {}
+      const onSpy = jest.spyOn(process, 'on').mockImplementation(((
+        event: string,
+        handler: FatalHandler
+      ) => {
+        handlers[event] = handler
+        return process
+      }) as never)
+      let isolatedWinston: { createLogger: jest.Mock } | undefined
       try {
-        const eventHandlers: Record<string, Function> = {}
-
-        // Mock process.on
-        process.on = jest
-          .fn()
-          .mockImplementation((event: string, handler: Function) => {
-            eventHandlers[event] = handler
-            return process
-          })
-
-        // Import the logger so that it registers the process event handlers
         jest.isolateModules(() => {
           require('../logger')
+          isolatedWinston = require('winston')
         })
-
-        // Verify that the events were registered
-        expect(process.on).toHaveBeenCalledWith(
-          'unhandledRejection',
-          expect.any(Function)
-        )
-        expect(process.on).toHaveBeenCalledWith(
-          'uncaughtException',
-          expect.any(Function)
-        )
-        expect(eventHandlers).toHaveProperty('unhandledRejection')
-        expect(eventHandlers).toHaveProperty('uncaughtException')
-
-        // Run the event handlers
-        const mockError = new Error('Test error')
-
-        // unhandledRejection handler
-        eventHandlers.unhandledRejection(mockError)
-        expect(winston.createLogger().error).toHaveBeenCalledWith(
-          'unhandledRejection',
-          mockError
-        )
-
-        // uncaughtException handler
-        eventHandlers.uncaughtException(mockError)
-        expect(winston.createLogger().error).toHaveBeenCalledWith(
-          'uncaughtException',
-          mockError
-        )
       } finally {
-        // Restore
-        process.on = originalProcessOn
+        onSpy.mockRestore()
       }
+      if (!isolatedWinston) {
+        throw new Error('winston was not loaded')
+      }
+      const winstonLogger = isolatedWinston.createLogger() as MockWinstonLogger
+      return { handlers, winstonLogger, isolatedWinston }
+    }
+
+    let exitSpy: jest.SpyInstance
+    let consoleErrorSpy: jest.SpyInstance
+
+    beforeEach(() => {
+      jest.useFakeTimers()
+      exitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation((() => undefined) as never)
+      consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined)
+    })
+
+    afterEach(() => {
+      exitSpy.mockRestore()
+      consoleErrorSpy.mockRestore()
+      process.exitCode = undefined
+      jest.useRealTimers()
+    })
+
+    it.each(['unhandledRejection', 'uncaughtException'])(
+      'should log %s with the unchanged label and exit with code 1',
+      async (label) => {
+        const { handlers, winstonLogger } = loadHandlers()
+        expect(handlers).toHaveProperty(label)
+
+        const mockError = new Error('Test error')
+        handlers[label](mockError)
+        await jest.advanceTimersByTimeAsync(0)
+
+        expect(winstonLogger.error).toHaveBeenCalledWith(label, mockError)
+        expect(winstonLogger.end).toHaveBeenCalledTimes(1)
+        expect(exitSpy).toHaveBeenCalledTimes(1)
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(process.exitCode).toBe(1)
+      }
+    )
+
+    it('should wait for the transports to finish before exiting', async () => {
+      const { handlers, winstonLogger } = loadHandlers()
+      const transport = new EventEmitter()
+      winstonLogger.transports = [transport]
+
+      handlers.uncaughtException(new Error('Test error'))
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(exitSpy).not.toHaveBeenCalled()
+
+      transport.emit('finish')
+      await jest.advanceTimersByTimeAsync(0)
+      expect(exitSpy).toHaveBeenCalledTimes(1)
+      expect(exitSpy).toHaveBeenCalledWith(1)
+    })
+
+    it('should wait for a closeable transport to drain after its own finish', async () => {
+      const { handlers, winstonLogger } = loadHandlers()
+      const transport = Object.assign(new EventEmitter(), {
+        close: jest.fn(),
+      })
+      winstonLogger.transports = [transport]
+
+      handlers.uncaughtException(new Error('Test error'))
+      transport.emit('finish')
+      await jest.advanceTimersByTimeAsync(0)
+      expect(transport.close).toHaveBeenCalledTimes(1)
+      expect(exitSpy).not.toHaveBeenCalled()
+
+      transport.emit('finish')
+      await jest.advanceTimersByTimeAsync(0)
+      expect(exitSpy).toHaveBeenCalledTimes(1)
+      expect(exitSpy).toHaveBeenCalledWith(1)
+    })
+
+    it('should exit with code 1 after 2000 ms even if a transport never finishes', async () => {
+      const { handlers, winstonLogger } = loadHandlers()
+      winstonLogger.transports = [new EventEmitter()]
+
+      handlers.uncaughtException(new Error('Test error'))
+      await jest.advanceTimersByTimeAsync(1999)
+      expect(exitSpy).not.toHaveBeenCalled()
+
+      await jest.advanceTimersByTimeAsync(1)
+      expect(exitSpy).toHaveBeenCalledTimes(1)
+      expect(exitSpy).toHaveBeenCalledWith(1)
+    })
+
+    it('should report the failure and still exit with code 1 when logging throws', async () => {
+      const { handlers, isolatedWinston } = loadHandlers()
+      const failure = new Error('createLogger failed')
+      isolatedWinston.createLogger.mockImplementationOnce(() => {
+        throw failure
+      })
+
+      handlers.uncaughtException(new Error('Test error'))
+      await jest.advanceTimersByTimeAsync(0)
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to handle a fatal process error',
+        failure
+      )
+      expect(exitSpy).toHaveBeenCalledTimes(1)
+      expect(exitSpy).toHaveBeenCalledWith(1)
+    })
+
+    it('should ignore a second fatal event while the first is being flushed', async () => {
+      const { handlers, winstonLogger } = loadHandlers()
+      winstonLogger.transports = [new EventEmitter()]
+
+      handlers.uncaughtException(new Error('first'))
+      handlers.unhandledRejection(new Error('second'))
+      await jest.advanceTimersByTimeAsync(2000)
+
+      expect(winstonLogger.error).toHaveBeenCalledTimes(1)
+      expect(exitSpy).toHaveBeenCalledTimes(1)
+      expect(exitSpy).toHaveBeenCalledWith(1)
     })
   })
 })

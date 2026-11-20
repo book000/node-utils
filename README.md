@@ -46,7 +46,7 @@ main()
 | `LOG_FILE_FORMAT` | `text` | `text` (`.log` files) or `ndjson` (`.ndjson` files) |
 | `TZ` | `Asia/Tokyo` | Timezone of the timestamps (unknown values fall back to `Asia/Tokyo`) |
 
-Importing `Logger` also registers `unhandledRejection` and `uncaughtException` handlers that log through `Logger.configure('main')`.
+Importing `Logger` also registers `unhandledRejection` and `uncaughtException` handlers that log through `Logger.configure('main')`, flush the log outputs for up to 2 seconds, and then exit with status 1, as Node does by default for fatal errors. Callbacks that are already due may still run during the flush window. Earlier versions only logged the error and kept the process running with exit status 0.
 
 ### JSONC Configuration framework
 
@@ -92,7 +92,7 @@ main()
 
 ### Sentry (GlitchTip) integration for error reporting
 
-`Logger` automatically forwards `error`/`warn` logs (and the existing `unhandledRejection` / `uncaughtException` process hooks) to a Sentry-compatible endpoint (e.g. self-hosted [GlitchTip](https://glitchtip.com/)) when the `SENTRY_DSN` environment variable is set. No code changes are required on the consuming side beyond upgrading `@book000/node-utils` and setting the environment variable.
+`Logger` automatically forwards `error`/`warn` logs (and the existing `unhandledRejection` / `uncaughtException` process hooks, which log, flush and then exit with status 1) to a Sentry-compatible endpoint (e.g. self-hosted [GlitchTip](https://glitchtip.com/)) when the `SENTRY_DSN` environment variable is set. No code changes are required on the consuming side beyond upgrading `@book000/node-utils` and setting the environment variable.
 
 ```typescript
 import { Logger } from '@book000/node-utils'

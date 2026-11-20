@@ -24,6 +24,9 @@ const getTimestampFormatter = (): string => {
   return zonedTime.format(format)
 }
 
+/** Upper bound for flushing log outputs before exiting after a fatal process error. */
+const FATAL_FLUSH_TIMEOUT_MS = 2000
+
 /**
  * Logger wrapper around winston.
  *
@@ -32,6 +35,7 @@ const getTimestampFormatter = (): string => {
  */
 export class Logger {
   private static readonly cache = new Map<string, Logger>()
+  private static fatalInProgress = false
 
   private readonly logger: winston.Logger
 
@@ -256,17 +260,98 @@ export class Logger {
     // 'YYYY-MM-DD HH:mm:ss.SSS' in the TZ environment variable's timezone (default Asia/Tokyo)
     return getTimestampFormatter
   }
-}
 
-// Importing this module deliberately registers these handlers at the top level so that unhandled exceptions
-// and rejections are logged automatically. Making it opt-in would change the behavior for existing consumers.
-// eslint-disable-next-line unicorn/no-top-level-side-effects
-process.on('unhandledRejection', (reason) => {
-  const logger = Logger.configure('main')
-  logger.error('unhandledRejection', reason as Error)
-})
-// eslint-disable-next-line unicorn/no-top-level-side-effects
-process.on('uncaughtException', (error) => {
-  const logger = Logger.configure('main')
-  logger.error('uncaughtException', error)
-})
+  /**
+   * Ends every cached winston logger and waits until all of their transports have finished,
+   * so that pending file writes and Sentry deliveries are not lost.
+   * Resolves (never rejects) after `timeoutMs` at the latest, because a transport may never finish.
+   */
+  private static flushAll(timeoutMs: number): Promise<void> {
+    const finished = this.cache
+      .values()
+      .flatMap((instance) => {
+        const pending = instance.logger.transports.map((transport) =>
+          this.flushTransport(transport)
+        )
+        instance.logger.end()
+        return pending
+      })
+      .toArray()
+
+    let timer: NodeJS.Timeout | undefined
+    const timeout = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, timeoutMs)
+    })
+    return Promise.race([
+      Promise.all(finished).then(() => undefined),
+      timeout,
+    ]).finally(() => {
+      clearTimeout(timer)
+    })
+  }
+
+  /**
+   * Resolves once the transport has processed all pending writes.
+   *
+   * The stream's own `finish` is not enough for a transport that buffers writes in a stream of its own
+   * (such as the daily-rotated file): its `close()` ends that stream and emits `finish` again once drained.
+   */
+  private static flushTransport(transport: winston.transport): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const closeTransport = () => {
+        if (typeof transport.close !== 'function') {
+          resolve()
+          return
+        }
+        transport.once('finish', () => {
+          resolve()
+        })
+        transport.close()
+      }
+      if (transport.writableFinished) {
+        closeTransport()
+        return
+      }
+      transport.once('finish', closeTransport)
+    })
+  }
+
+  /**
+   * Logs a fatal process error, flushes the log outputs within {@link FATAL_FLUSH_TIMEOUT_MS},
+   * and exits with status 1.
+   *
+   * A second fatal event while the first is being handled is dropped, and every failure path still ends in
+   * `process.exit(1)`: a throw here would re-enter as `uncaughtException` and be swallowed by that guard.
+   */
+  private static exitAfterFatal(label: string, error: unknown): void {
+    if (this.fatalInProgress) {
+      return
+    }
+    this.fatalInProgress = true
+    process.exitCode = 1
+    void (async () => {
+      try {
+        this.configure('main').error(label, error as Error)
+        await this.flushAll(FATAL_FLUSH_TIMEOUT_MS)
+      } catch (flushError) {
+        // The logger itself may be broken, so console.error is the last resort
+        console.error('Failed to handle a fatal process error', flushError)
+      } finally {
+        // Exiting is the point: a listener replaced Node's fatal behavior, so it must be restored explicitly
+        // eslint-disable-next-line unicorn/no-process-exit
+        process.exit(1)
+      }
+    })()
+  }
+
+  // Registered when this module is imported, so that fatal errors are logged without any setup by the consumer.
+  // Installing a listener replaces Node's default fatal behavior, so exitAfterFatal() restores it by exiting nonzero.
+  static {
+    process.on('unhandledRejection', (reason) => {
+      Logger.exitAfterFatal('unhandledRejection', reason)
+    })
+    process.on('uncaughtException', (error) => {
+      Logger.exitAfterFatal('uncaughtException', error)
+    })
+  }
+}

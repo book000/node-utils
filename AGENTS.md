@@ -13,7 +13,7 @@ Guidance for AI coding agents and contributors. `CLAUDE.md` imports this file, a
 
 `@book000/node-utils` is a personal TypeScript utility library published to npm (single package, not a monorepo). Only `dist/` is published (`files` in `package.json`).
 
-- `Logger` (`src/logger.ts`): winston wrapper with console and daily-rotated file output, `text` / `ndjson` file formats, and a per-category instance cache. Registers `unhandledRejection` / `uncaughtException` handlers on import.
+- `Logger` (`src/logger.ts`): winston wrapper with console and daily-rotated file output, `text` / `ndjson` file formats, and a per-category instance cache. Registers `unhandledRejection` / `uncaughtException` handlers on import that log the error, flush the log outputs for up to 2 seconds, and exit with status 1.
 - `ConfigFramework` (`src/config.ts`): abstract base class for a JSONC configuration file. The path comes from `CONFIG_PATH`, `CONFIG_FILE` or the constructor argument. Subclasses define validation rules.
 - `Discord` (`src/discord.ts`): sends and edits messages through a Bot or a Webhook (embeds, link buttons, files, flags).
 - Sentry (GlitchTip) integration: `SentryTransport` (`src/sentry-transport.ts`) is added to the Logger transports when `SENTRY_DSN` is set. `ErrorReporter` (`src/error-reporter.ts`) is an explicit opt-in static API.
