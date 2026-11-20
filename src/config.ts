@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { parse } from 'jsonc-parser'
+import { parse, printParseErrorCode, type ParseError } from 'jsonc-parser'
 
 /**
  * Base class for managing a configuration file.
@@ -52,10 +52,18 @@ export abstract class ConfigFramework<IConfig> {
    * Reads and parses the configuration file resolved by the constructor.
    *
    * No validation is done here; call {@link validate} afterwards.
+   * @throws If the file contains invalid JSONC
    */
   public load(): void {
     const data = fs.readFileSync(this.path, 'utf8')
-    const json = parse(data) as IConfig
+    const errors: ParseError[] = []
+    const json = parse(data, errors, { allowTrailingComma: true }) as IConfig
+    if (errors.length > 0) {
+      const error = errors[0]
+      throw new Error(
+        `Invalid JSONC at offset ${error.offset}: ${printParseErrorCode(error.error)}`
+      )
+    }
     this.config = json
   }
 

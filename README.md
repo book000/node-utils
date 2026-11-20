@@ -52,7 +52,7 @@ Importing `Logger` also registers `unhandledRejection` and `uncaughtException` h
 
 Framework class to manage a configuration file in JSONC format (comments and trailing commas are allowed).
 
-The constructor takes an optional fallback `path`. The first existing file among the `CONFIG_PATH` environment variable, the `CONFIG_FILE` environment variable and `path` is used, and an `Error` is thrown if none exists. In the example below, set `CONFIG_PATH` or `CONFIG_FILE` to the configuration file path. `load()` reads the file, `validate()` runs the rules from `validates()`, and `getValidateFailures()` returns the names of the failed rules.
+The constructor takes an optional fallback `path`. The first existing file among the `CONFIG_PATH` environment variable, the `CONFIG_FILE` environment variable and `path` is used, and an `Error` is thrown if none exists. In the example below, set `CONFIG_PATH` or `CONFIG_FILE` to the configuration file path. `load()` reads the file and throws on invalid JSONC, `validate()` runs the rules from `validates()`, and `getValidateFailures()` returns the names of the failed rules.
 
 ```typescript
 import { ConfigFramework } from '@book000/node-utils'

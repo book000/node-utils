@@ -124,12 +124,37 @@ describe('ConfigFramework', () => {
       }).not.toThrow()
     })
 
-    it('should load but resulting in incomplete parsing when JSON is invalid', () => {
+    it('should reject invalid JSONC', () => {
       const config = new TestConfigFramework(invalidJsonConfigPath)
-      // jsonc-parser does not throw; it parses only the parsable part
       expect(() => {
         config.load()
-      }).not.toThrow()
+      }).toThrow('Invalid JSONC')
+      expect(() => config.validate()).toThrow('Config not loaded')
+    })
+
+    it('should reject truncated JSONC even when all required fields precede the error', () => {
+      const filePath = path.join(temporaryDirectory, 'truncated.jsonc')
+      fs.writeFileSync(
+        filePath,
+        '{"name":"accepted","value":10,"flag":true,"unfinished":'
+      )
+      const config = new TestConfigFramework(filePath)
+      expect(() => {
+        config.load()
+      }).toThrow('Invalid JSONC')
+      expect(() => config.validate()).toThrow('Config not loaded')
+    })
+
+    it('should accept JSONC comments and trailing commas', () => {
+      const filePath = path.join(temporaryDirectory, 'valid.jsonc')
+      fs.writeFileSync(
+        filePath,
+        '{ // comment\n "name": "test", "value": 10, "flag": true, }'
+      )
+      const config = new TestConfigFramework(filePath)
+      config.load()
+      expect(config.validate()).toBe(true)
+      expect(config.get('name')).toBe('test')
     })
   })
 
