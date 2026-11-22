@@ -24,6 +24,10 @@ const getTimestampFormatter = (): string => {
   return zonedTime.format(format)
 }
 
+/** JSON.stringify throws on BigInt; a decimal string matches what winston's `json()` format writes. */
+const bigintToString = (_key: string, value: unknown): unknown =>
+  typeof value === 'bigint' ? value.toString() : value
+
 /** Upper bound for flushing log outputs before exiting after a fatal process error. */
 const FATAL_FLUSH_TIMEOUT_MS = 2000
 
@@ -153,14 +157,14 @@ export class Logger {
         ']: ',
         message,
         Object.keys(filteredRest).length > 0
-          ? ` (${JSON.stringify(filteredRest)})`
+          ? ` (${JSON.stringify(filteredRest, bigintToString)})`
           : '',
       ].join('')
       let errorLine
       if (info.stack && typeof info.stack === 'string') {
         errorLine = info.stack.split('\n').slice(1).join('\n')
       } else if (info.stack) {
-        errorLine = JSON.stringify(info.stack)
+        errorLine = JSON.stringify(info.stack, bigintToString)
       } else {
         errorLine = undefined
       }

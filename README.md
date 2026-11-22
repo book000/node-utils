@@ -37,6 +37,8 @@ main()
 
 `Logger.configure(category)` returns the same instance for the same category, so settings are read only on the first call for each category. Use a fixed, low-cardinality value (a module or class name) as the category. Call `Logger.closeAll()` to close every cached logger, for example on shutdown.
 
+`BigInt` values in metadata are written as decimal strings (for example `{"id":"1"}`) in the console, `text` and `ndjson` output, so logging them never throws.
+
 | Environment variable | Default | Description |
 |---|---|---|
 | `LOG_LEVEL` | `info` | Console log level |
