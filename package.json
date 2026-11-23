@@ -20,9 +20,9 @@
   "scripts": {
     "compile": "tsc -p tsconfig.build.json",
     "ctix": "ctix build --mode bundle -o src -w --backup false --use-semicolon false --generation-style default-alias-named-star -p tsconfig.build.json",
-    "build": "run-s clean ctix compile",
-    "prepublishOnly": "run-s lint",
-    "prepare": "run-s build",
+    "build": "run-z clean ctix compile",
+    "prepublishOnly": "run-z lint",
+    "prepare": "run-z build",
     "clean": "rimraf dist output tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo",
     "example": "tsx ./src/examples/main.ts",
     "lint:prettier": "prettier --check src",
@@ -59,8 +59,7 @@
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "winston": "3.19.0",
-    "winston-daily-rotate-file": "5.0.0",
-    "yarn-run-all": "3.1.1"
+    "winston-daily-rotate-file": "5.0.0"
   },
   "packageManager": "pnpm@12.22.0",
   "jest": {
