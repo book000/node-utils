@@ -199,7 +199,7 @@ export class SentryTransport extends TransportStream {
     // Sentry drops second and later sends of the same Error instance,
     // so send a copy of the original (logging the same Error as warn and then error loses neither)
     const error = original
-      ? this.toError(original.message, original.stack ?? '', original.name)
+      ? this.copyError(original)
       : typeof stack === 'string'
         ? this.toError(message, stack)
         : undefined
@@ -265,6 +265,26 @@ export class SentryTransport extends TransportStream {
       if (nested instanceof Error) return nested
     }
     return undefined
+  }
+
+  private copyError(original: Error): Error {
+    const copy = this.toError(
+      original.message,
+      original.stack ?? '',
+      original.name
+    )
+    for (const key of Reflect.ownKeys(original)) {
+      if (
+        key === 'message' ||
+        key === 'name' ||
+        key === 'stack' ||
+        key === '__sentry_captured__'
+      )
+        continue
+      const descriptor = Object.getOwnPropertyDescriptor(original, key)
+      if (descriptor) Object.defineProperty(copy, key, descriptor)
+    }
+    return copy
   }
 
   private toError(message: string, stack: string, errorName?: string): Error {

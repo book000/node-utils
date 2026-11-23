@@ -122,14 +122,55 @@ describe('SentryTransport', () => {
     })
 
     it('should capture the same Error instance every time it is logged', () => {
-      const error = new Error('again')
+      const cause = new Error('root')
+      const error = new Error('again', { cause })
       const logger = createLogger()
       logger.warn('retry', error)
       logger.error('gave up', error)
 
-      const calls = (Sentry.captureException as jest.Mock).mock.calls
+      const calls = (Sentry.captureException as jest.Mock).mock.calls as [
+        Error,
+      ][]
       expect(calls).toHaveLength(2)
-      expect(calls[0]).not.toBe(error)
+      expect(calls[0][0]).not.toBe(error)
+      expect(calls[1][0]).not.toBe(calls[0][0])
+      expect(calls[0][0].cause).toBe(cause)
+      expect(calls[1][0].cause).toBe(cause)
+    })
+
+    it('preserves nested causes and structured property descriptors', () => {
+      const root = new Error('root')
+      const middle = new Error('middle', { cause: root })
+      const error = new Error('outer', { cause: middle })
+      Object.defineProperties(error, {
+        context: { value: { id: 42 } },
+        __sentry_captured__: { value: true },
+      })
+      createLogger().warn('failed', error)
+
+      const calls = (Sentry.captureException as jest.Mock).mock.calls as [
+        Error,
+      ][]
+      const copy = calls[0][0]
+      expect((copy.cause as Error).cause).toBe(root)
+      expect(Object.getOwnPropertyDescriptor(copy, 'context')).toEqual(
+        Object.getOwnPropertyDescriptor(error, 'context')
+      )
+      expect(copy).not.toHaveProperty('__sentry_captured__')
+    })
+
+    it('preserves aggregate children and cyclic causes without traversing them', () => {
+      const child = new Error('child')
+      const aggregate = new AggregateError([child], 'group')
+      Object.defineProperty(child, 'cause', { value: aggregate })
+      createLogger().warn('failed', aggregate)
+
+      const calls = (Sentry.captureException as jest.Mock).mock.calls as [
+        AggregateError,
+      ][]
+      const copy = calls[0][0]
+      expect(copy.errors).toEqual([child])
+      expect((copy.errors[0] as Error).cause).toBe(aggregate)
     })
 
     describe('SentryMeta', () => {

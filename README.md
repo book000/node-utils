@@ -108,6 +108,8 @@ The forwarded issue keeps the original error's name and message as its title, an
 
 An `Error` instance that was already reported at a given level is not reported again (regardless of the logger category), so `logger.error('failed', err)` followed by a rethrow caught by the built-in `unhandledRejection` / `uncaughtException` hooks sends one event. Distinct `Error` instances are never deduplicated, and the same instance logged first as `warn` and later as `error` is still reported twice (once per level).
 
+Copied errors retain their own structured properties, including nested `cause` and `AggregateError.errors` relationships, for Sentry's linked error processing. Sentry limits the number of linked exceptions it reports.
+
 `Logger.warn` / `Logger.error` accept an optional third argument `SentryMeta` to control what is sent to Sentry for that log:
 
 ```typescript
