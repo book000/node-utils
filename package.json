@@ -44,7 +44,7 @@
     "winston-transport": "4.9.0"
   },
   "devDependencies": {
-    "@book000/eslint-config": "1.17.2",
+    "@book000/eslint-config": "1.17.14",
     "@types/jest": "30.0.0",
     "@types/node": "26.6.10",
     "ctix": "2.8.2",
